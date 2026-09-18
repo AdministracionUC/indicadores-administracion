@@ -7,26 +7,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   :root{
-    --bg:#0d1a2b;
-    --bg-grad:#0a1522;
-    --panel:#152742;
-    --panel-2:#122036;
-    --border:#24384f;
-    --text:#eaf0f7;
-    --text-dim:#8ea0b8;
-    --text-faint:#5f7188;
-    --gold:#d3a256;
-    --gold-soft:#3a3320;
+    --bg:#050505;
+    --bg-grad:#000000;
+    --panel:#141414;
+    --panel-2:#1c1c1c;
+    --border:#2b2b2b;
+    --text:#f5f5f7;
+    --text-dim:#a6a6ad;
+    --text-faint:#6b6b73;
+    --purple:#8b5cf6;
+    --purple-2:#6d28d9;
+    --purple-soft:#241a3a;
     --green:#4fa07a;
     --green-soft:#173224;
     --red:#d1685f;
     --red-soft:#3a1f1e;
     --blue:#5b8fc7;
-    --blue-soft:#132538;
+    --blue-soft:#12203a;
     --radius:14px;
   }
   *{box-sizing:border-box;}
@@ -54,15 +54,16 @@
   .brand{display:flex; align-items:center; gap:14px;}
   .brand-mark{
     width:44px;height:44px;border-radius:10px;
-    background:linear-gradient(135deg, var(--gold), #a97a34);
+    background:#000;
+    border:1.5px solid var(--purple);
     display:flex;align-items:center;justify-content:center;
-    font-weight:800;color:#241a08;font-size:15px;letter-spacing:.5px;
+    font-weight:800;color:#fff;font-size:15px;letter-spacing:.5px;
   }
   .brand h1{font-size:18px; margin:0; letter-spacing:.3px; font-weight:700;}
   .brand p{margin:2px 0 0; font-size:12.5px; color:var(--text-dim);}
 
   .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
-  select, .upload-btn{
+  select{
     background:var(--panel);
     border:1px solid var(--border);
     color:var(--text);
@@ -72,29 +73,7 @@
     font-family:inherit;
     cursor:pointer;
   }
-  .upload-btn{
-    display:flex; align-items:center; gap:8px;
-    background:linear-gradient(135deg, #1c3350, #16273f);
-    border-color:#2c4666;
-    font-weight:600;
-    transition:filter .15s ease;
-  }
-  .upload-btn:hover{filter:brightness(1.15);}
-  input[type=file]{display:none;}
   .last-update{font-size:11.5px; color:var(--text-faint); text-align:right;}
-
-  .sync-bar{
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    padding:12px 28px; background:var(--panel-2); border-bottom:1px solid var(--border);
-  }
-  #sheetUrlInput{
-    flex:1; min-width:260px; background:var(--bg-grad); border:1px solid var(--border); color:var(--text);
-    padding:9px 12px; border-radius:9px; font-size:12.5px; font-family:inherit;
-  }
-  #sheetUrlInput::placeholder{color:var(--text-faint);}
-  .sync-status{font-size:11.5px; color:var(--text-dim); white-space:nowrap;}
-  .sync-status.connected{color:var(--green);}
-  .sync-status.error{color:var(--red);}
 
   main{padding:22px 28px;}
 
@@ -117,18 +96,18 @@
     content:'';
     position:absolute; left:0; top:0; bottom:0; width:4px;
   }
-  .kpi.gold::before{background:var(--gold);}
+  .kpi.purple::before{background:var(--purple);}
   .kpi.green::before{background:var(--green);}
   .kpi.red::before{background:var(--red);}
   .kpi-label{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-dim); font-weight:600; margin-bottom:10px;}
   .kpi-value{font-size:34px; font-weight:800; line-height:1;}
   .kpi-sub{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
   .progress-track{
-    width:100%; height:8px; border-radius:6px; background:#1e3350; margin-top:12px; overflow:hidden;
+    width:100%; height:8px; border-radius:6px; background:#241f2e; margin-top:12px; overflow:hidden;
   }
-  .progress-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--gold), #f0c479);}
-  .stars{font-size:22px; letter-spacing:2px; color:var(--gold);}
-  .stars .empty{color:#2b4059;}
+  .progress-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--purple-2), var(--purple));}
+  .stars{font-size:22px; letter-spacing:2px; color:var(--purple);}
+  .stars .empty{color:#332a45;}
 
   /* ---------- Section grid ---------- */
   .section-title{
@@ -137,7 +116,7 @@
   }
   .st-navy{background:var(--blue-soft); color:#9fc1ea;}
   .st-green{background:var(--green-soft); color:#8fd4ae;}
-  .st-gold{background:var(--gold-soft); color:#e8bf7c;}
+  .st-gold{background:var(--purple-soft); color:#c9a9fb;}
 
   .cols{
     display:grid;
@@ -215,24 +194,14 @@
   </div>
   <div class="controls">
     <select id="monthSelect"></select>
-    <label class="upload-btn" for="fileInput">⭯ Actualizar datos (Excel)
-      <input type="file" id="fileInput" accept=".xlsx,.xls">
-    </label>
     <div class="last-update" id="lastUpdate"></div>
   </div>
 </header>
 
-<div class="sync-bar" id="syncBar">
-  <input type="text" id="sheetUrlInput" placeholder="Pega aquí el link CSV publicado de tu Google Sheet (Archivo → Publicar en la Web → CSV)">
-  <button class="upload-btn" id="connectBtn" type="button">🔗 Conectar</button>
-  <button class="upload-btn" id="refreshBtn" type="button" title="Volver a sincronizar ahora">⭯ Sincronizar ahora</button>
-  <span class="sync-status" id="syncStatus">Sin conectar — usando datos de ejemplo / último Excel subido</span>
-</div>
-
 <main>
 
   <div class="kpi-row">
-    <div class="kpi gold">
+    <div class="kpi purple">
       <div class="kpi-label">Presupuesto operativo ejecutado</div>
       <div class="kpi-value" id="kpiPresupuestoPct">—</div>
       <div class="progress-track"><div class="progress-fill" id="kpiPresupuestoBar" style="width:0%"></div></div>
@@ -341,10 +310,10 @@
 
 </main>
 
-<footer>Sube tu archivo Excel de indicadores (misma plantilla) con el botón "Actualizar datos" cada vez que registres nueva información — el panel recalcula todo automáticamente. Metas mostradas son referenciales y se pueden ajustar.</footer>
+<footer>Los datos se sincronizan automáticamente desde el Google Sheet cada 60 segundos. Metas mostradas son referenciales y se pueden ajustar.</footer>
 
 <script>
-/* ================= DEFAULT DATA (loaded from current spreadsheet) ================= */
+/* ================= DEFAULT DATA (respaldo mientras carga la primera sincronización) ================= */
 const DEFAULT = {
   months: ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE"],
   presupuestoTotal: 4772601.92,
@@ -389,11 +358,16 @@ let STATE = JSON.parse(JSON.stringify(DEFAULT));
 let CHARTS = {};
 let CURRENT_IDX = null;
 
-// Pre-cargado con el link de Google Sheets indicado por el usuario.
-// Si la hoja publicada cambia, se puede reemplazar aquí o pegando un nuevo link en la barra superior.
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/10kAR4FTV0fV_8V_VKITuDYjbOWgMLDOjLDuXyzMdbpE/edit?gid=212610485#gid=212610485";
+/* ID y gid tomados directamente del link de Google Sheets que diste.
+   Si algún día cambias de hoja, solo reemplaza estas dos constantes. */
+const SHEET_ID = "10kAR4FTV0fV_8V_VKITuDYjbOWgMLDOjLDuXyzMdbpE";
+const SHEET_GID = "212610485";
+/* Endpoint "gviz" en vez de "/export?format=csv": este sí responde con
+   encabezados CORS para hojas compartidas como "Cualquiera con el enlace"
+   o publicadas en la web, por eso antes fallaba la sincronización. */
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
 
-const COLORS = {gold:'#d3a256', green:'#4fa07a', red:'#d1685f', blue:'#5b8fc7', track:'#1e3350', textDim:'#8ea0b8'};
+const COLORS = {gold:'#8b5cf6', green:'#4fa07a', red:'#d1685f', blue:'#5b8fc7', track:'#241f2e', textDim:'#a6a6ad'};
 
 function lastFilledIndex(arr){
   for(let i=arr.length-1;i>=0;i--){ if(arr[i]!==null && arr[i]!==undefined && arr[i]!=='') return i; }
@@ -468,8 +442,8 @@ function render(){
   const months = STATE.months;
   const shortM = monthLabelsShort(months);
 
-  // populate month selector
   const sel = document.getElementById('monthSelect');
+  const prevVal = sel.value;
   sel.innerHTML = '';
   months.forEach((m,i)=>{
     const opt = document.createElement('option');
@@ -483,7 +457,6 @@ function render(){
 
   renderForIndex(CURRENT_IDX);
 
-  // charts (full series, independent of selector)
   makeBar('chartIncidentes', shortM, [
     {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
     {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
@@ -498,7 +471,6 @@ function render(){
   makeBar('chartPresupuesto', shortM, [
     {name:'Ejecución mensual (S/)', data:d.ejecucion_presupuesto, color:COLORS.gold},
   ]);
-  // add reference line for target manually via mixed chart
   if(CHARTS['chartPresupuesto']){
     CHARTS['chartPresupuesto'].data.datasets.push({
       type:'line', label:'Presupuesto mensual promedio', data:months.map(()=>targetMensual),
@@ -510,7 +482,6 @@ function render(){
     CHARTS['chartPresupuesto'].update();
   }
 
-  // footer chips (YTD sums)
   const sum = (arr)=> arr.reduce((a,b)=> a + (b||0), 0);
   document.getElementById('chipAusentismo').textContent = fmtNum(sum(d.ausentismo));
   document.getElementById('chipReclamos').textContent = fmtNum(sum(d.reclamos));
@@ -526,14 +497,12 @@ function renderForIndex(idx){
   const val = (key)=> d[key] && d[key][idx]!==undefined ? d[key][idx] : null;
   const nz = (v)=> v===null||v===undefined ? 0 : v;
 
-  // KPI 1: presupuesto ejecutado acumulado hasta el mes seleccionado
   const acumulado = d.ejecucion_presupuesto.slice(0, idx+1).reduce((a,b)=>a+(b||0),0);
   const pct = acumulado / STATE.presupuestoTotal;
   document.getElementById('kpiPresupuestoPct').textContent = fmtPct(pct);
   document.getElementById('kpiPresupuestoBar').style.width = Math.min(100, pct*100)+'%';
   document.getElementById('kpiPresupuestoSub').textContent = fmtMoney(acumulado)+' de '+fmtMoney(STATE.presupuestoTotal);
 
-  // KPI 2: stars
   const idxKeys = ['operatividad_camaras','cumplimiento_limpieza','cumplimiento_preventivos','ejecucion_rondas'];
   const vals = idxKeys.map(k=>nz(val(k)));
   const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -549,7 +518,6 @@ function renderForIndex(idx){
   document.getElementById('kpiStars').innerHTML = starsHtml;
   document.getElementById('kpiStarsSub').textContent = 'Promedio de indicadores clave · '+(avg*100).toFixed(0)+'/100';
 
-  // KPI 3: alerts
   let alerts = [];
   Object.keys(THRESHOLDS).forEach(k=>{
     const t = THRESHOLDS[k];
@@ -574,7 +542,6 @@ function renderForIndex(idx){
     tbody.appendChild(tr);
   });
 
-  // gauges
   makeGauge('gaugeCamaras', nz(val('operatividad_camaras')), COLORS.blue);
   document.getElementById('gaugeCamarasTxt').textContent = fmtPct(nz(val('operatividad_camaras')));
   makeGauge('gaugeRondas', nz(val('ejecucion_rondas')), COLORS.gold);
@@ -587,68 +554,26 @@ function renderForIndex(idx){
   document.getElementById('statTiempoResp').textContent = val('tiempo_respuesta')!==null ? fmtNum(val('tiempo_respuesta')) : '—';
 
   const corr = nz(val('ejecucion_correctivos')), ev = nz(val('ejecucion_eventos'));
-  const total = corr+ev || 1;
   makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]);
 
-  document.getElementById('lastUpdate').textContent = 'Mes de referencia: '+(months[idx].charAt(0)+months[idx].slice(1).toLowerCase());
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent =
+    'Mes de referencia: '+(months[idx].charAt(0)+months[idx].slice(1).toLowerCase())+' · actualizado '+now.toLocaleTimeString('es-PE');
 }
 
 document.getElementById('monthSelect').addEventListener('change', (e)=>{
   renderForIndex(parseInt(e.target.value));
 });
 
-/* ---------------- Excel upload ---------------- */
+/* ---------------- Mapeo de la hoja a la estructura del panel ---------------- */
 const ROWMAP = {
   ausentismo:6, alcohol:7, drogas:8, robos:9, intrusiones:10, operatividad_camaras:11,
   reclamos:12, ejecucion_rondas:13, cumplimiento_limpieza:14, tiempo_respuesta:15,
   incidencias_opl:16, cumplimiento_preventivos:17, ejecucion_correctivos:18,
   ejecucion_eventos:19, incidencias_alquileres:20, ejecucion_presupuesto:21
 };
-document.getElementById('fileInput').addEventListener('change', function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(evt){
-    try{
-      const wb = XLSX.read(evt.target.result, {type:'array'});
-      let sheetName = wb.SheetNames.find(n=>n.trim().toUpperCase().startsWith('INDICADORES')) || wb.SheetNames[0];
-      const ws = wb.Sheets[sheetName];
-      const get = (r,c)=>{ const cell = ws[XLSX.utils.encode_cell({r:r-1,c:c-1})]; return cell ? cell.v : null; };
-
-      const months = [];
-      for(let c=5;c<=15;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
-
-      const newData = {};
-      Object.keys(ROWMAP).forEach(key=>{
-        const row = ROWMAP[key];
-        const arr = [];
-        for(let c=5;c<=15;c++){
-          const v = get(row,c);
-          arr.push(typeof v === 'number' ? v : (v===null || v==='' ? null : Number(v)));
-        }
-        newData[key] = arr;
-      });
-
-      const presupuestoTotal = get(3,2) || STATE.presupuestoTotal;
-      const anio = get(4,5) || STATE.anio;
-
-      STATE = { months, presupuestoTotal, anio, data: newData };
-      try{ localStorage.setItem('panel_admin_data', JSON.stringify(STATE)); }catch(err){}
-      render();
-    }catch(err){
-      alert('No se pudo leer el archivo. Verifica que mantenga el mismo formato de plantilla.');
-      console.error(err);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-/* ---------------- Google Sheets (published CSV) sync ---------------- */
-let SHEET_URL = null;
-let AUTO_TIMER = null;
 
 function mapGridToState(grid){
-  // grid: array of rows, each row an array of cell strings (1-indexed rows/cols mirrored via helper)
   const get = (r,c)=>{
     const row = grid[r-1];
     if(!row) return null;
@@ -679,79 +604,31 @@ function mapGridToState(grid){
   return { months, presupuestoTotal, anio, data: newData };
 }
 
-function setSyncStatus(msg, cls){
-  const el = document.getElementById('syncStatus');
-  el.textContent = msg;
-  el.className = 'sync-status' + (cls ? ' '+cls : '');
-}
-
-function toCsvExportUrl(url){
-  // Accepts either a /pub?...output=csv link or a normal edit link with gid, and normalizes.
-  try{
-    if(url.includes('output=csv') || url.includes('/pub')) return url;
-    const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    const gidM = url.match(/gid=([0-9]+)/);
-    if(m){
-      const id = m[1];
-      const gid = gidM ? gidM[1] : '0';
-      return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-    }
-  }catch(e){}
-  return url;
-}
-
-function syncFromGoogleSheet(silent){
-  if(!SHEET_URL) return;
-  if(!silent) setSyncStatus('Sincronizando…');
-  const finalUrl = toCsvExportUrl(SHEET_URL);
-  fetch(finalUrl, {cache:'no-store'})
+/* ---------------- Sincronización automática y silenciosa con Google Sheets ---------------- */
+function syncFromGoogleSheet(){
+  fetch(SHEET_CSV_URL, {cache:'no-store'})
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(csvText=>{
       const parsed = Papa.parse(csvText, {skipEmptyLines:false});
       STATE = mapGridToState(parsed.data);
-      try{
-        localStorage.setItem('panel_admin_data', JSON.stringify(STATE));
-        localStorage.setItem('panel_sheet_url', SHEET_URL);
-      }catch(e){}
+      try{ localStorage.setItem('panel_admin_data', JSON.stringify(STATE)); }catch(e){}
       render();
-      const now = new Date();
-      setSyncStatus('Conectado · última sincronización '+now.toLocaleTimeString('es-PE'), 'connected');
     })
     .catch(err=>{
-      console.error(err);
-      setSyncStatus('No se pudo sincronizar. Revisa que el link sea el de "Publicar en la Web" en formato CSV y que la hoja siga publicada.', 'error');
+      // Si falla (ej. sin conexión momentánea), se mantienen los últimos datos cargados.
+      console.error('Sincronización con Google Sheets falló:', err);
     });
 }
 
-document.getElementById('connectBtn').addEventListener('click', ()=>{
-  const url = document.getElementById('sheetUrlInput').value.trim();
-  if(!url){ setSyncStatus('Pega primero el link CSV publicado.', 'error'); return; }
-  SHEET_URL = url;
-  syncFromGoogleSheet(false);
-  if(AUTO_TIMER) clearInterval(AUTO_TIMER);
-  AUTO_TIMER = setInterval(()=>syncFromGoogleSheet(true), 60000);
-});
-document.getElementById('refreshBtn').addEventListener('click', ()=>{
-  if(SHEET_URL){ syncFromGoogleSheet(false); }
-  else { setSyncStatus('Conecta primero un link de Google Sheets, o sube un Excel.', 'error'); }
-});
-
-/* ---------------- Init (restore last connection / upload if present) ---------------- */
+/* ---------------- Inicio: restaura el último dato guardado y sincroniza de inmediato ---------------- */
 (function init(){
   try{
-    const savedUrl = localStorage.getItem('panel_sheet_url') || DEFAULT_SHEET_URL;
     const saved = localStorage.getItem('panel_admin_data');
     if(saved){ STATE = JSON.parse(saved); }
-    if(savedUrl){
-      document.getElementById('sheetUrlInput').value = savedUrl;
-      SHEET_URL = savedUrl;
-      render();
-      syncFromGoogleSheet(true);
-      AUTO_TIMER = setInterval(()=>syncFromGoogleSheet(true), 60000);
-      return;
-    }
   }catch(err){}
   render();
+  syncFromGoogleSheet();
+  setInterval(syncFromGoogleSheet, 60000);
 })();
 </script>
 </body>
