@@ -588,15 +588,20 @@ function mapGridToState(grid){
     return v;
   };
   // Google Sheets exporta el CSV con el texto ya formateado de cada celda,
-  // no el número puro: un 92% llega como "92%" y un monto como "S/ 4,772,601.92".
-  // Por eso hay que detectar el "%" (y dividir entre 100) antes de limpiar el resto de símbolos.
+  // no el número puro: un 92% llega como "92%" y un monto llega en formato
+  // peruano, con punto como separador de miles y coma como decimal
+  // (ej. "S/ 4.772.601,92"). Hay que interpretar ambos casos antes de convertir a número.
   const toNum = (v)=>{
     if(v===null) return null;
     let s = String(v).trim();
     if(s==='') return null;
     const isPct = s.includes('%');
-    s = s.replace(/[^0-9.\-]/g,''); // quita "S/", espacios, comas de miles, "%", etc.
+    s = s.replace(/[^0-9.,\-]/g,''); // quita "S/", espacios, "%", letras, etc.
     if(s==='' || s==='-') return null;
+    if(s.includes(',')){
+      // Formato peruano/latino: "." = separador de miles, "," = decimal
+      s = s.replace(/\./g,'').replace(',', '.');
+    }
     let n = Number(s);
     if(isNaN(n)) return null;
     if(isPct) n = n/100;
