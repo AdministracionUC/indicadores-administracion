@@ -315,26 +315,26 @@
 <script>
 /* ================= DEFAULT DATA (respaldo mientras carga la primera sincronización) ================= */
 const DEFAULT = {
-  months: ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE"],
+  months: ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"],
   presupuestoTotal: 4772601.92,
   anio: 2026,
   data: {
-    ausentismo: [5,0,6,4,0,9,0,30,null,null,null],
-    alcohol: [0,0,6,9,1,1,0,3,null,null,null],
-    drogas: [0,0,0,0,0,0,0,0,null,null,null],
-    robos: [0,0,0,0,0,0,0,0,null,null,null],
-    intrusiones: [0,0,0,0,0,0,0,0,null,null,null],
-    operatividad_camaras: [1,1,1,1,1,0.92,0.92,0.92,null,null,null],
-    reclamos: [0,0,0,0,0,0,2,0,1,null,null],
-    ejecucion_rondas: [0.35,0.35,0.35,0.5,0.5,0.5,0.5,0.5,null,null,null],
-    cumplimiento_limpieza: [1,1,1,1,1,1,1,1,null,null,null],
-    tiempo_respuesta: [45,45,45,45,45,45,30,30,null,null,null],
-    incidencias_opl: [0,0,0,0,0,1,0,1,null,null,null],
-    cumplimiento_preventivos: [1,1,1,1,1,1,1,1,null,null,null],
-    ejecucion_correctivos: [83,96,30,91,123,75,19,35,null,null,null],
-    ejecucion_eventos: [0,9,20,29,52,32,19,21,null,null,null],
-    incidencias_alquileres: [0,0,0,0,0,0,0,1,1,null,null],
-    ejecucion_presupuesto: [161399,169746,327912,413108,363048,393578,411518,397043,null,null,null]
+    ausentismo: [5,0,6,4,0,9,0,30,null,null,null,null],
+    alcohol: [0,0,6,9,1,1,0,3,null,null,null,null],
+    drogas: [0,0,0,0,0,0,0,0,null,null,null,null],
+    robos: [0,0,0,0,0,0,0,0,null,null,null,null],
+    intrusiones: [0,0,0,0,0,0,0,0,null,null,null,null],
+    operatividad_camaras: [1,1,1,1,1,0.92,0.92,0.92,null,null,null,null],
+    reclamos: [0,0,0,0,0,0,2,0,1,null,null,null],
+    ejecucion_rondas: [0.35,0.35,0.35,0.5,0.5,0.5,0.5,0.5,null,null,null,null],
+    cumplimiento_limpieza: [1,1,1,1,1,1,1,1,null,null,null,null],
+    tiempo_respuesta: [45,45,45,45,45,45,30,30,null,null,null,null],
+    incidencias_opl: [0,0,0,0,0,1,0,1,null,null,null,null],
+    cumplimiento_preventivos: [1,1,1,1,1,1,1,1,null,null,null,null],
+    ejecucion_correctivos: [83,96,30,91,123,75,19,35,null,null,null,null],
+    ejecucion_eventos: [0,9,20,29,52,32,19,21,null,null,null,null],
+    incidencias_alquileres: [0,0,0,0,0,0,0,1,1,null,null,null],
+    ejecucion_presupuesto: [161399,169746,327912,413108,363048,393578,411518,397043,null,null,null,null]
   }
 };
 
@@ -357,6 +357,7 @@ const LABELS = {
 let STATE = JSON.parse(JSON.stringify(DEFAULT));
 let CHARTS = {};
 let CURRENT_IDX = null;
+let USER_SELECTED_IDX = null; // mes elegido a mano por el usuario; si es null, se usa el último mes con datos
 
 /* ID y gid tomados directamente del link de Google Sheets que diste.
    Si algún día cambias de hoja, solo reemplaza estas dos constantes. */
@@ -443,7 +444,6 @@ function render(){
   const shortM = monthLabelsShort(months);
 
   const sel = document.getElementById('monthSelect');
-  const prevVal = sel.value;
   sel.innerHTML = '';
   months.forEach((m,i)=>{
     const opt = document.createElement('option');
@@ -451,11 +451,16 @@ function render(){
     sel.appendChild(opt);
   });
 
+  // Si el usuario ya eligió un mes a mano, respeta esa elección en cada
+  // sincronización automática; si no, muestra el último mes con datos.
   const refIdx = lastFilledIndex(d.ejecucion_presupuesto);
-  CURRENT_IDX = refIdx >= 0 ? refIdx : 0;
-  sel.value = CURRENT_IDX;
+  const idxToUse = (USER_SELECTED_IDX !== null && USER_SELECTED_IDX < months.length)
+    ? USER_SELECTED_IDX
+    : (refIdx >= 0 ? refIdx : 0);
+  CURRENT_IDX = idxToUse;
+  sel.value = idxToUse;
 
-  renderForIndex(CURRENT_IDX);
+  renderForIndex(idxToUse);
 
   makeBar('chartIncidentes', shortM, [
     {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
@@ -562,7 +567,8 @@ function renderForIndex(idx){
 }
 
 document.getElementById('monthSelect').addEventListener('change', (e)=>{
-  renderForIndex(parseInt(e.target.value));
+  USER_SELECTED_IDX = parseInt(e.target.value);
+  renderForIndex(USER_SELECTED_IDX);
 });
 
 /* ---------------- Mapeo de la hoja a la estructura del panel ---------------- */
@@ -581,20 +587,31 @@ function mapGridToState(grid){
     if(v === undefined || v === null || v === '') return null;
     return v;
   };
+  // Google Sheets exporta el CSV con el texto ya formateado de cada celda,
+  // no el número puro: un 92% llega como "92%" y un monto como "S/ 4,772,601.92".
+  // Por eso hay que detectar el "%" (y dividir entre 100) antes de limpiar el resto de símbolos.
   const toNum = (v)=>{
     if(v===null) return null;
-    const n = Number(String(v).replace(/,/g,'').replace('%',''));
-    return isNaN(n) ? null : n;
+    let s = String(v).trim();
+    if(s==='') return null;
+    const isPct = s.includes('%');
+    s = s.replace(/[^0-9.\-]/g,''); // quita "S/", espacios, comas de miles, "%", etc.
+    if(s==='' || s==='-') return null;
+    let n = Number(s);
+    if(isNaN(n)) return null;
+    if(isPct) n = n/100;
+    return n;
   };
 
+  // Meses: de ENERO a DICIEMBRE son las columnas E(5) a P(16) en tu plantilla.
   const months = [];
-  for(let c=5;c<=15;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
+  for(let c=5;c<=16;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
 
   const newData = {};
   Object.keys(ROWMAP).forEach(key=>{
     const row = ROWMAP[key];
     const arr = [];
-    for(let c=5;c<=15;c++){ arr.push(toNum(get(row,c))); }
+    for(let c=5;c<=16;c++){ arr.push(toNum(get(row,c))); }
     newData[key] = arr;
   });
 
