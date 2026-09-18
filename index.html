@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Control Administrativo — Universidad Continental</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1a2b;
+    --bg-grad:#0a1522;
+    --panel:#152742;
+    --panel-2:#122036;
+    --border:#24384f;
+    --text:#eaf0f7;
+    --text-dim:#8ea0b8;
+    --text-faint:#5f7188;
+    --gold:#d3a256;
+    --gold-soft:#3a3320;
+    --green:#4fa07a;
+    --green-soft:#173224;
+    --red:#d1685f;
+    --red-soft:#3a1f1e;
+    --blue:#5b8fc7;
+    --blue-soft:#132538;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top, var(--bg) 0%, var(--bg-grad) 70%);
+    color:var(--text);
+    font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  h1,h2,h3, .num-display{font-family:'Sora','Inter',sans-serif;}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:14px;
+    padding:22px 28px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-mark{
+    width:44px;height:44px;border-radius:10px;
+    background:linear-gradient(135deg, var(--gold), #a97a34);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:#241a08;font-size:15px;letter-spacing:.5px;
+  }
+  .brand h1{font-size:18px; margin:0; letter-spacing:.3px; font-weight:700;}
+  .brand p{margin:2px 0 0; font-size:12.5px; color:var(--text-dim);}
+
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  select, .upload-btn{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:9px;
+    font-size:13px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .upload-btn{
+    display:flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg, #1c3350, #16273f);
+    border-color:#2c4666;
+    font-weight:600;
+    transition:filter .15s ease;
+  }
+  .upload-btn:hover{filter:brightness(1.15);}
+  input[type=file]{display:none;}
+  .last-update{font-size:11.5px; color:var(--text-faint); text-align:right;}
+
+  .sync-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:12px 28px; background:var(--panel-2); border-bottom:1px solid var(--border);
+  }
+  #sheetUrlInput{
+    flex:1; min-width:260px; background:var(--bg-grad); border:1px solid var(--border); color:var(--text);
+    padding:9px 12px; border-radius:9px; font-size:12.5px; font-family:inherit;
+  }
+  #sheetUrlInput::placeholder{color:var(--text-faint);}
+  .sync-status{font-size:11.5px; color:var(--text-dim); white-space:nowrap;}
+  .sync-status.connected{color:var(--green);}
+  .sync-status.error{color:var(--red);}
+
+  main{padding:22px 28px;}
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:16px;
+    margin-bottom:22px;
+  }
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi::before{
+    content:'';
+    position:absolute; left:0; top:0; bottom:0; width:4px;
+  }
+  .kpi.gold::before{background:var(--gold);}
+  .kpi.green::before{background:var(--green);}
+  .kpi.red::before{background:var(--red);}
+  .kpi-label{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-dim); font-weight:600; margin-bottom:10px;}
+  .kpi-value{font-size:34px; font-weight:800; line-height:1;}
+  .kpi-sub{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
+  .progress-track{
+    width:100%; height:8px; border-radius:6px; background:#1e3350; margin-top:12px; overflow:hidden;
+  }
+  .progress-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--gold), #f0c479);}
+  .stars{font-size:22px; letter-spacing:2px; color:var(--gold);}
+  .stars .empty{color:#2b4059;}
+
+  /* ---------- Section grid ---------- */
+  .section-title{
+    font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
+    padding:10px 14px; border-radius:9px; margin-bottom:14px;
+  }
+  .st-navy{background:var(--blue-soft); color:#9fc1ea;}
+  .st-green{background:var(--green-soft); color:#8fd4ae;}
+  .st-gold{background:var(--gold-soft); color:#e8bf7c;}
+
+  .cols{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(330px, 1fr));
+    gap:18px;
+    margin-bottom:22px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .row-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .subcard{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:11px;
+    padding:12px; display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .subcard .title{font-size:11px; color:var(--text-dim); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px;}
+  .gauge-wrap{position:relative; width:100%; max-width:150px; height:82px;}
+  .gauge-center{
+    position:absolute; left:0; right:0; bottom:2px; text-align:center;
+    font-size:19px; font-weight:800;
+  }
+  .big-stat{font-size:28px; font-weight:800; margin-top:14px;}
+  .big-stat-unit{font-size:13px; color:var(--text-dim); font-weight:500;}
+
+  .chart-card{background:var(--panel-2); border:1px solid var(--border); border-radius:11px; padding:12px 14px 6px;}
+  .chart-card .title{font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px;}
+  .chart-box{position:relative; height:150px;}
+
+  /* ---------- Alerts table ---------- */
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{text-align:left; color:var(--text-faint); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:6px 6px; border-bottom:1px solid var(--border);}
+  td{padding:7px 6px; border-bottom:1px solid rgba(255,255,255,0.04);}
+  .badge{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;}
+  .badge.ok{background:var(--green-soft); color:#8fd4ae;}
+  .badge.alert{background:var(--red-soft); color:#f0a29a;}
+
+  /* ---------- Budget section ---------- */
+  .budget-panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:22px;
+  }
+  .budget-panel .chart-box{height:220px;}
+
+  .footer-strip{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:14px;
+  }
+  .chip{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+  }
+  .chip .val{font-size:20px; font-weight:800;}
+  .chip .lab{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.4px;}
+
+  footer{padding:0 28px; color:var(--text-faint); font-size:11.5px; font-style:italic;}
+
+  @media (max-width:640px){
+    .kpi-row{grid-template-columns:1fr;}
+    header{padding:16px;}
+    main{padding:16px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">UC</div>
+    <div>
+      <h1>Panel de Control Administrativo</h1>
+      <p>Universidad Continental · Coordinación Administrativa</p>
+    </div>
+  </div>
+  <div class="controls">
+    <select id="monthSelect"></select>
+    <label class="upload-btn" for="fileInput">⭯ Actualizar datos (Excel)
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </label>
+    <div class="last-update" id="lastUpdate"></div>
+  </div>
+</header>
+
+<div class="sync-bar" id="syncBar">
+  <input type="text" id="sheetUrlInput" placeholder="Pega aquí el link CSV publicado de tu Google Sheet (Archivo → Publicar en la Web → CSV)">
+  <button class="upload-btn" id="connectBtn" type="button">🔗 Conectar</button>
+  <button class="upload-btn" id="refreshBtn" type="button" title="Volver a sincronizar ahora">⭯ Sincronizar ahora</button>
+  <span class="sync-status" id="syncStatus">Sin conectar — usando datos de ejemplo / último Excel subido</span>
+</div>
+
+<main>
+
+  <div class="kpi-row">
+    <div class="kpi gold">
+      <div class="kpi-label">Presupuesto operativo ejecutado</div>
+      <div class="kpi-value" id="kpiPresupuestoPct">—</div>
+      <div class="progress-track"><div class="progress-fill" id="kpiPresupuestoBar" style="width:0%"></div></div>
+      <div class="kpi-sub" id="kpiPresupuestoSub">—</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Índice general de cumplimiento</div>
+      <div class="stars" id="kpiStars">—</div>
+      <div class="kpi-sub" id="kpiStarsSub">Promedio de indicadores clave</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Alertas críticas activas</div>
+      <div class="kpi-value" id="kpiAlertCount" style="color:var(--red)">—</div>
+      <div class="kpi-sub" id="kpiAlertSub">Indicadores fuera de meta este mes</div>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- SEGURIDAD Y VIGILANCIA -->
+    <div class="panel">
+      <div class="section-title st-navy">Seguridad y Vigilancia</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Operatividad de cámaras</div>
+          <div class="gauge-wrap"><canvas id="gaugeCamaras"></canvas><div class="gauge-center" id="gaugeCamarasTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Ejecución de rondas</div>
+          <div class="gauge-wrap"><canvas id="gaugeRondas"></canvas><div class="gauge-center" id="gaugeRondasTxt">—</div></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Incidentes de seguridad por mes</div>
+        <div class="chart-box"><canvas id="chartIncidentes"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Alertas activas — detalle</div>
+        <table>
+          <thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th>Estado</th></tr></thead>
+          <tbody id="alertsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LIMPIEZA -->
+    <div class="panel">
+      <div class="section-title st-green">Limpieza</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Cumplimiento plan limpieza</div>
+          <div class="gauge-wrap"><canvas id="gaugeLimpieza"></canvas><div class="gauge-center" id="gaugeLimpiezaTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Tiempo de respuesta</div>
+          <div class="big-stat" id="statTiempoResp">—</div>
+          <div class="big-stat-unit">minutos (último mes)</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Incidencias OPL por mes</div>
+        <div class="chart-box"><canvas id="chartOPL"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Tiempo de respuesta a eventos (min)</div>
+        <div class="chart-box"><canvas id="chartTiempo"></canvas></div>
+      </div>
+    </div>
+
+    <!-- MANTENIMIENTO -->
+    <div class="panel">
+      <div class="section-title st-gold">Mantenimiento</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Cumpl. preventivos</div>
+          <div class="gauge-wrap"><canvas id="gaugePreventivos"></canvas><div class="gauge-center" id="gaugePreventivosTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Correctivos vs eventos</div>
+          <div class="gauge-wrap"><canvas id="donutCorrectivos"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Ejecución de correctivos por mes</div>
+        <div class="chart-box"><canvas id="chartCorrectivos"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Ejecución de eventos por mes</div>
+        <div class="chart-box"><canvas id="chartEventos"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="budget-panel">
+    <div class="section-title st-navy" style="display:inline-block;">Presupuesto</div>
+    <div class="chart-box"><canvas id="chartPresupuesto"></canvas></div>
+  </div>
+
+  <div class="footer-strip">
+    <div class="chip"><div class="val" id="chipAusentismo">—</div><div class="lab">Ausentismo acumulado</div></div>
+    <div class="chip"><div class="val" id="chipReclamos">—</div><div class="lab">Reclamos acumulados</div></div>
+    <div class="chip"><div class="val" id="chipRobos">—</div><div class="lab">Robos / intrusiones YTD</div></div>
+    <div class="chip"><div class="val" id="chipAlquileres">—</div><div class="lab">Incid. espacios alquilados YTD</div></div>
+  </div>
+
+</main>
+
+<footer>Sube tu archivo Excel de indicadores (misma plantilla) con el botón "Actualizar datos" cada vez que registres nueva información — el panel recalcula todo automáticamente. Metas mostradas son referenciales y se pueden ajustar.</footer>
+
+<script>
+/* ================= DEFAULT DATA (loaded from current spreadsheet) ================= */
+const DEFAULT = {
+  months: ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE"],
+  presupuestoTotal: 4772601.92,
+  anio: 2026,
+  data: {
+    ausentismo: [5,0,6,4,0,9,0,30,null,null,null],
+    alcohol: [0,0,6,9,1,1,0,3,null,null,null],
+    drogas: [0,0,0,0,0,0,0,0,null,null,null],
+    robos: [0,0,0,0,0,0,0,0,null,null,null],
+    intrusiones: [0,0,0,0,0,0,0,0,null,null,null],
+    operatividad_camaras: [1,1,1,1,1,0.92,0.92,0.92,null,null,null],
+    reclamos: [0,0,0,0,0,0,2,0,1,null,null],
+    ejecucion_rondas: [0.35,0.35,0.35,0.5,0.5,0.5,0.5,0.5,null,null,null],
+    cumplimiento_limpieza: [1,1,1,1,1,1,1,1,null,null,null],
+    tiempo_respuesta: [45,45,45,45,45,45,30,30,null,null,null],
+    incidencias_opl: [0,0,0,0,0,1,0,1,null,null,null],
+    cumplimiento_preventivos: [1,1,1,1,1,1,1,1,null,null,null],
+    ejecucion_correctivos: [83,96,30,91,123,75,19,35,null,null,null],
+    ejecucion_eventos: [0,9,20,29,52,32,19,21,null,null,null],
+    incidencias_alquileres: [0,0,0,0,0,0,0,1,1,null,null],
+    ejecucion_presupuesto: [161399,169746,327912,413108,363048,393578,411518,397043,null,null,null]
+  }
+};
+
+const THRESHOLDS = {
+  operatividad_camaras: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  cumplimiento_limpieza: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  cumplimiento_preventivos: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  ejecucion_rondas: {min:0.5, label:"≥ 50%", fmt:'pct'},
+  tiempo_respuesta: {max:40, label:"≤ 40 min", fmt:'num'},
+  ausentismo: {max:15, label:"≤ 15 casos", fmt:'num'},
+  incidencias_opl: {max:0, label:"0 incidencias", fmt:'num'}
+};
+const LABELS = {
+  operatividad_camaras:"Operatividad de cámaras", cumplimiento_limpieza:"Cumplimiento limpieza",
+  cumplimiento_preventivos:"Cumpl. preventivos", ejecucion_rondas:"Ejecución de rondas",
+  tiempo_respuesta:"Tiempo de respuesta", ausentismo:"Ausentismo del personal",
+  incidencias_opl:"Incidencias OPL"
+};
+
+let STATE = JSON.parse(JSON.stringify(DEFAULT));
+let CHARTS = {};
+let CURRENT_IDX = null;
+
+// Pre-cargado con el link de Google Sheets indicado por el usuario.
+// Si la hoja publicada cambia, se puede reemplazar aquí o pegando un nuevo link en la barra superior.
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/10kAR4FTV0fV_8V_VKITuDYjbOWgMLDOjLDuXyzMdbpE/edit?gid=212610485#gid=212610485";
+
+const COLORS = {gold:'#d3a256', green:'#4fa07a', red:'#d1685f', blue:'#5b8fc7', track:'#1e3350', textDim:'#8ea0b8'};
+
+function lastFilledIndex(arr){
+  for(let i=arr.length-1;i>=0;i--){ if(arr[i]!==null && arr[i]!==undefined && arr[i]!=='') return i; }
+  return -1;
+}
+function fmtPct(v){ return (v*100).toFixed(1)+'%'; }
+function fmtNum(v){ return Number(v).toLocaleString('es-PE'); }
+function fmtMoney(v){ return 'S/ '+Number(v).toLocaleString('es-PE', {maximumFractionDigits:0}); }
+
+/* ---------------- Gauge (half doughnut) ---------------- */
+function makeGauge(canvasId, value, color){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  const v = Math.max(0, Math.min(1, value||0));
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{ data:[v, 1-v], backgroundColor:[color, COLORS.track], borderWidth:0 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      circumference:180, rotation:270, cutout:'72%',
+      plugins:{legend:{display:false}, tooltip:{enabled:false}}
+    }
+  });
+}
+
+function baseLineOpts(yfmt){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ ticks:{color:COLORS.textDim, font:{size:9}}, grid:{color:'rgba(255,255,255,0.04)'} },
+      y:{ ticks:{color:COLORS.textDim, font:{size:9}, callback:(v)=> yfmt==='pct' ? (v*100)+'%' : v }, grid:{color:'rgba(255,255,255,0.06)'} }
+    }
+  };
+}
+function makeBar(canvasId, labels, series){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets: series.map(s=>({label:s.name, data:s.data, backgroundColor:s.color, borderRadius:3, maxBarThickness:16})) },
+    options: baseLineOpts('num')
+  });
+}
+function makeLine(canvasId, labels, series, yfmt){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets: series.map(s=>({
+        label:s.name, data:s.data, borderColor:s.color, backgroundColor:s.color+'22',
+        tension:.35, fill:true, pointRadius:3, pointBackgroundColor:s.color, spanGaps:false
+      })) },
+    options: baseLineOpts(yfmt)
+  });
+}
+function makeDonut(canvasId, values, colors){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{data:values, backgroundColor:colors, borderWidth:0}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{display:true, position:'bottom', labels:{color:COLORS.textDim, font:{size:9}, boxWidth:8, padding:6}}} }
+  });
+}
+
+function monthLabelsShort(months){ return months.map(m=>m.slice(0,3).charAt(0)+m.slice(1,3).toLowerCase()); }
+
+function render(){
+  const d = STATE.data;
+  const months = STATE.months;
+  const shortM = monthLabelsShort(months);
+
+  // populate month selector
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  months.forEach((m,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = m.charAt(0)+m.slice(1).toLowerCase();
+    sel.appendChild(opt);
+  });
+
+  const refIdx = lastFilledIndex(d.ejecucion_presupuesto);
+  CURRENT_IDX = refIdx >= 0 ? refIdx : 0;
+  sel.value = CURRENT_IDX;
+
+  renderForIndex(CURRENT_IDX);
+
+  // charts (full series, independent of selector)
+  makeBar('chartIncidentes', shortM, [
+    {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
+    {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
+    {name:'Drogas', data:d.drogas, color:COLORS.red},
+  ]);
+  makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]);
+  makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num');
+  makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]);
+  makeLine('chartEventos', shortM, [{name:'Eventos', data:d.ejecucion_eventos, color:COLORS.green}], 'num');
+
+  const targetMensual = STATE.presupuestoTotal/12;
+  makeBar('chartPresupuesto', shortM, [
+    {name:'Ejecución mensual (S/)', data:d.ejecucion_presupuesto, color:COLORS.gold},
+  ]);
+  // add reference line for target manually via mixed chart
+  if(CHARTS['chartPresupuesto']){
+    CHARTS['chartPresupuesto'].data.datasets.push({
+      type:'line', label:'Presupuesto mensual promedio', data:months.map(()=>targetMensual),
+      borderColor:COLORS.red, borderDash:[6,4], pointRadius:0, borderWidth:1.5, fill:false
+    });
+    CHARTS['chartPresupuesto'].options.plugins.legend.display = true;
+    CHARTS['chartPresupuesto'].options.plugins.legend.position = 'bottom';
+    CHARTS['chartPresupuesto'].options.plugins.legend.labels = {color:COLORS.textDim, font:{size:10}};
+    CHARTS['chartPresupuesto'].update();
+  }
+
+  // footer chips (YTD sums)
+  const sum = (arr)=> arr.reduce((a,b)=> a + (b||0), 0);
+  document.getElementById('chipAusentismo').textContent = fmtNum(sum(d.ausentismo));
+  document.getElementById('chipReclamos').textContent = fmtNum(sum(d.reclamos));
+  document.getElementById('chipRobos').textContent = fmtNum(sum(d.robos)+sum(d.intrusiones));
+  document.getElementById('chipAlquileres').textContent = fmtNum(sum(d.incidencias_alquileres));
+}
+
+function renderForIndex(idx){
+  const d = STATE.data;
+  const months = STATE.months;
+  CURRENT_IDX = idx;
+
+  const val = (key)=> d[key] && d[key][idx]!==undefined ? d[key][idx] : null;
+  const nz = (v)=> v===null||v===undefined ? 0 : v;
+
+  // KPI 1: presupuesto ejecutado acumulado hasta el mes seleccionado
+  const acumulado = d.ejecucion_presupuesto.slice(0, idx+1).reduce((a,b)=>a+(b||0),0);
+  const pct = acumulado / STATE.presupuestoTotal;
+  document.getElementById('kpiPresupuestoPct').textContent = fmtPct(pct);
+  document.getElementById('kpiPresupuestoBar').style.width = Math.min(100, pct*100)+'%';
+  document.getElementById('kpiPresupuestoSub').textContent = fmtMoney(acumulado)+' de '+fmtMoney(STATE.presupuestoTotal);
+
+  // KPI 2: stars
+  const idxKeys = ['operatividad_camaras','cumplimiento_limpieza','cumplimiento_preventivos','ejecucion_rondas'];
+  const vals = idxKeys.map(k=>nz(val(k)));
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const score = avg*5;
+  const full = Math.floor(score);
+  const half = (score-full)>=0.5;
+  let starsHtml='';
+  for(let i=0;i<5;i++){
+    if(i<full) starsHtml+='★';
+    else if(i===full && half) starsHtml+='★';
+    else starsHtml+='<span class="empty">★</span>';
+  }
+  document.getElementById('kpiStars').innerHTML = starsHtml;
+  document.getElementById('kpiStarsSub').textContent = 'Promedio de indicadores clave · '+(avg*100).toFixed(0)+'/100';
+
+  // KPI 3: alerts
+  let alerts = [];
+  Object.keys(THRESHOLDS).forEach(k=>{
+    const t = THRESHOLDS[k];
+    const v = val(k);
+    if(v===null) return;
+    let fail = false;
+    if(t.min!==undefined && v < t.min) fail = true;
+    if(t.max!==undefined && v > t.max) fail = true;
+    alerts.push({key:k, v, t, fail});
+  });
+  const failing = alerts.filter(a=>a.fail);
+  document.getElementById('kpiAlertCount').textContent = failing.length;
+  document.getElementById('kpiAlertSub').textContent = failing.length ? 'Requieren atención inmediata' : 'Todos los indicadores dentro de meta';
+
+  const tbody = document.getElementById('alertsBody');
+  tbody.innerHTML = '';
+  alerts.forEach(a=>{
+    const tr = document.createElement('tr');
+    const valTxt = a.t.fmt==='pct' ? fmtPct(a.v) : fmtNum(a.v);
+    tr.innerHTML = `<td>${LABELS[a.key]}</td><td>${valTxt}</td><td>${a.t.label}</td>
+      <td><span class="badge ${a.fail?'alert':'ok'}">${a.fail?'ALERTA':'OK'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // gauges
+  makeGauge('gaugeCamaras', nz(val('operatividad_camaras')), COLORS.blue);
+  document.getElementById('gaugeCamarasTxt').textContent = fmtPct(nz(val('operatividad_camaras')));
+  makeGauge('gaugeRondas', nz(val('ejecucion_rondas')), COLORS.gold);
+  document.getElementById('gaugeRondasTxt').textContent = fmtPct(nz(val('ejecucion_rondas')));
+  makeGauge('gaugeLimpieza', nz(val('cumplimiento_limpieza')), COLORS.green);
+  document.getElementById('gaugeLimpiezaTxt').textContent = fmtPct(nz(val('cumplimiento_limpieza')));
+  makeGauge('gaugePreventivos', nz(val('cumplimiento_preventivos')), COLORS.gold);
+  document.getElementById('gaugePreventivosTxt').textContent = fmtPct(nz(val('cumplimiento_preventivos')));
+
+  document.getElementById('statTiempoResp').textContent = val('tiempo_respuesta')!==null ? fmtNum(val('tiempo_respuesta')) : '—';
+
+  const corr = nz(val('ejecucion_correctivos')), ev = nz(val('ejecucion_eventos'));
+  const total = corr+ev || 1;
+  makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]);
+
+  document.getElementById('lastUpdate').textContent = 'Mes de referencia: '+(months[idx].charAt(0)+months[idx].slice(1).toLowerCase());
+}
+
+document.getElementById('monthSelect').addEventListener('change', (e)=>{
+  renderForIndex(parseInt(e.target.value));
+});
+
+/* ---------------- Excel upload ---------------- */
+const ROWMAP = {
+  ausentismo:6, alcohol:7, drogas:8, robos:9, intrusiones:10, operatividad_camaras:11,
+  reclamos:12, ejecucion_rondas:13, cumplimiento_limpieza:14, tiempo_respuesta:15,
+  incidencias_opl:16, cumplimiento_preventivos:17, ejecucion_correctivos:18,
+  ejecucion_eventos:19, incidencias_alquileres:20, ejecucion_presupuesto:21
+};
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'array'});
+      let sheetName = wb.SheetNames.find(n=>n.trim().toUpperCase().startsWith('INDICADORES')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const get = (r,c)=>{ const cell = ws[XLSX.utils.encode_cell({r:r-1,c:c-1})]; return cell ? cell.v : null; };
+
+      const months = [];
+      for(let c=5;c<=15;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
+
+      const newData = {};
+      Object.keys(ROWMAP).forEach(key=>{
+        const row = ROWMAP[key];
+        const arr = [];
+        for(let c=5;c<=15;c++){
+          const v = get(row,c);
+          arr.push(typeof v === 'number' ? v : (v===null || v==='' ? null : Number(v)));
+        }
+        newData[key] = arr;
+      });
+
+      const presupuestoTotal = get(3,2) || STATE.presupuestoTotal;
+      const anio = get(4,5) || STATE.anio;
+
+      STATE = { months, presupuestoTotal, anio, data: newData };
+      try{ localStorage.setItem('panel_admin_data', JSON.stringify(STATE)); }catch(err){}
+      render();
+    }catch(err){
+      alert('No se pudo leer el archivo. Verifica que mantenga el mismo formato de plantilla.');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ---------------- Google Sheets (published CSV) sync ---------------- */
+let SHEET_URL = null;
+let AUTO_TIMER = null;
+
+function mapGridToState(grid){
+  // grid: array of rows, each row an array of cell strings (1-indexed rows/cols mirrored via helper)
+  const get = (r,c)=>{
+    const row = grid[r-1];
+    if(!row) return null;
+    const v = row[c-1];
+    if(v === undefined || v === null || v === '') return null;
+    return v;
+  };
+  const toNum = (v)=>{
+    if(v===null) return null;
+    const n = Number(String(v).replace(/,/g,'').replace('%',''));
+    return isNaN(n) ? null : n;
+  };
+
+  const months = [];
+  for(let c=5;c<=15;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
+
+  const newData = {};
+  Object.keys(ROWMAP).forEach(key=>{
+    const row = ROWMAP[key];
+    const arr = [];
+    for(let c=5;c<=15;c++){ arr.push(toNum(get(row,c))); }
+    newData[key] = arr;
+  });
+
+  const presupuestoTotal = toNum(get(3,2)) || STATE.presupuestoTotal;
+  const anio = get(4,5) || STATE.anio;
+
+  return { months, presupuestoTotal, anio, data: newData };
+}
+
+function setSyncStatus(msg, cls){
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.className = 'sync-status' + (cls ? ' '+cls : '');
+}
+
+function toCsvExportUrl(url){
+  // Accepts either a /pub?...output=csv link or a normal edit link with gid, and normalizes.
+  try{
+    if(url.includes('output=csv') || url.includes('/pub')) return url;
+    const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    const gidM = url.match(/gid=([0-9]+)/);
+    if(m){
+      const id = m[1];
+      const gid = gidM ? gidM[1] : '0';
+      return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    }
+  }catch(e){}
+  return url;
+}
+
+function syncFromGoogleSheet(silent){
+  if(!SHEET_URL) return;
+  if(!silent) setSyncStatus('Sincronizando…');
+  const finalUrl = toCsvExportUrl(SHEET_URL);
+  fetch(finalUrl, {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(csvText=>{
+      const parsed = Papa.parse(csvText, {skipEmptyLines:false});
+      STATE = mapGridToState(parsed.data);
+      try{
+        localStorage.setItem('panel_admin_data', JSON.stringify(STATE));
+        localStorage.setItem('panel_sheet_url', SHEET_URL);
+      }catch(e){}
+      render();
+      const now = new Date();
+      setSyncStatus('Conectado · última sincronización '+now.toLocaleTimeString('es-PE'), 'connected');
+    })
+    .catch(err=>{
+      console.error(err);
+      setSyncStatus('No se pudo sincronizar. Revisa que el link sea el de "Publicar en la Web" en formato CSV y que la hoja siga publicada.', 'error');
+    });
+}
+
+document.getElementById('connectBtn').addEventListener('click', ()=>{
+  const url = document.getElementById('sheetUrlInput').value.trim();
+  if(!url){ setSyncStatus('Pega primero el link CSV publicado.', 'error'); return; }
+  SHEET_URL = url;
+  syncFromGoogleSheet(false);
+  if(AUTO_TIMER) clearInterval(AUTO_TIMER);
+  AUTO_TIMER = setInterval(()=>syncFromGoogleSheet(true), 60000);
+});
+document.getElementById('refreshBtn').addEventListener('click', ()=>{
+  if(SHEET_URL){ syncFromGoogleSheet(false); }
+  else { setSyncStatus('Conecta primero un link de Google Sheets, o sube un Excel.', 'error'); }
+});
+
+/* ---------------- Init (restore last connection / upload if present) ---------------- */
+(function init(){
+  try{
+    const savedUrl = localStorage.getItem('panel_sheet_url') || DEFAULT_SHEET_URL;
+    const saved = localStorage.getItem('panel_admin_data');
+    if(saved){ STATE = JSON.parse(saved); }
+    if(savedUrl){
+      document.getElementById('sheetUrlInput').value = savedUrl;
+      SHEET_URL = savedUrl;
+      render();
+      syncFromGoogleSheet(true);
+      AUTO_TIMER = setInterval(()=>syncFromGoogleSheet(true), 60000);
+      return;
+    }
+  }catch(err){}
+  render();
+})();
+</script>
+</body>
+</html>
