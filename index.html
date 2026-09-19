@@ -6,8 +6,18 @@
 <title>Panel de Control Administrativo — Universidad Continental</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  if (typeof Chart === 'undefined') {
+    document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"><\/scr' + 'ipt>');
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+  if (typeof Papa === 'undefined') {
+    document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"><\/scr' + 'ipt>');
+  }
+</script>
 <style>
   :root{
     --bg:#050505;
@@ -438,6 +448,13 @@ function makeDonut(canvasId, values, colors){
 
 function monthLabelsShort(months){ return months.map(m=>m.slice(0,3).charAt(0)+m.slice(1,3).toLowerCase()); }
 
+// Ejecuta una función de dibujo de gráfico atrapando cualquier error, para
+// que un fallo en un gráfico (p.ej. Chart.js no disponible) no bloquee el resto.
+function safeChart(fn){
+  try{ fn(); }
+  catch(err){ console.error('No se pudo dibujar un gráfico:', err); }
+}
+
 function render(){
   const d = STATE.data;
   const months = STATE.months;
@@ -460,38 +477,45 @@ function render(){
   CURRENT_IDX = idxToUse;
   sel.value = idxToUse;
 
-  renderForIndex(idxToUse);
-
-  makeBar('chartIncidentes', shortM, [
-    {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
-    {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
-    {name:'Drogas', data:d.drogas, color:COLORS.red},
-  ]);
-  makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]);
-  makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num');
-  makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]);
-  makeLine('chartEventos', shortM, [{name:'Eventos', data:d.ejecucion_eventos, color:COLORS.green}], 'num');
-
-  const targetMensual = STATE.presupuestoTotal/12;
-  makeBar('chartPresupuesto', shortM, [
-    {name:'Ejecución mensual (S/)', data:d.ejecucion_presupuesto, color:COLORS.gold},
-  ]);
-  if(CHARTS['chartPresupuesto']){
-    CHARTS['chartPresupuesto'].data.datasets.push({
-      type:'line', label:'Presupuesto mensual promedio', data:months.map(()=>targetMensual),
-      borderColor:COLORS.red, borderDash:[6,4], pointRadius:0, borderWidth:1.5, fill:false
-    });
-    CHARTS['chartPresupuesto'].options.plugins.legend.display = true;
-    CHARTS['chartPresupuesto'].options.plugins.legend.position = 'bottom';
-    CHARTS['chartPresupuesto'].options.plugins.legend.labels = {color:COLORS.textDim, font:{size:10}};
-    CHARTS['chartPresupuesto'].update();
-  }
-
+  // Los chips y las tarjetas KPI no dependen de Chart.js: se calculan primero
+  // para que siempre se vean, aunque falle el dibujo de algún gráfico.
   const sum = (arr)=> arr.reduce((a,b)=> a + (b||0), 0);
   document.getElementById('chipAusentismo').textContent = fmtNum(sum(d.ausentismo));
   document.getElementById('chipReclamos').textContent = fmtNum(sum(d.reclamos));
   document.getElementById('chipRobos').textContent = fmtNum(sum(d.robos)+sum(d.intrusiones));
   document.getElementById('chipAlquileres').textContent = fmtNum(sum(d.incidencias_alquileres));
+
+  // Cada gráfico se dibuja en su propio try/catch: si uno falla (p.ej. porque
+  // Chart.js no cargó a tiempo), los demás igual se dibujan en vez de quedar
+  // todos en blanco.
+  safeChart(()=> renderForIndex(idxToUse));
+
+  safeChart(()=> makeBar('chartIncidentes', shortM, [
+    {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
+    {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
+    {name:'Drogas', data:d.drogas, color:COLORS.red},
+  ]));
+  safeChart(()=> makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]));
+  safeChart(()=> makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num'));
+  safeChart(()=> makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]));
+  safeChart(()=> makeLine('chartEventos', shortM, [{name:'Eventos', data:d.ejecucion_eventos, color:COLORS.green}], 'num'));
+
+  safeChart(()=>{
+    const targetMensual = STATE.presupuestoTotal/12;
+    makeBar('chartPresupuesto', shortM, [
+      {name:'Ejecución mensual (S/)', data:d.ejecucion_presupuesto, color:COLORS.gold},
+    ]);
+    if(CHARTS['chartPresupuesto']){
+      CHARTS['chartPresupuesto'].data.datasets.push({
+        type:'line', label:'Presupuesto mensual promedio', data:months.map(()=>targetMensual),
+        borderColor:COLORS.red, borderDash:[6,4], pointRadius:0, borderWidth:1.5, fill:false
+      });
+      CHARTS['chartPresupuesto'].options.plugins.legend.display = true;
+      CHARTS['chartPresupuesto'].options.plugins.legend.position = 'bottom';
+      CHARTS['chartPresupuesto'].options.plugins.legend.labels = {color:COLORS.textDim, font:{size:10}};
+      CHARTS['chartPresupuesto'].update();
+    }
+  });
 }
 
 function renderForIndex(idx){
@@ -547,19 +571,25 @@ function renderForIndex(idx){
     tbody.appendChild(tr);
   });
 
-  makeGauge('gaugeCamaras', nz(val('operatividad_camaras')), COLORS.blue);
+  // Se pone primero el texto (no depende de Chart.js) y luego, por separado,
+  // se intenta dibujar cada medidor: si uno falla, el número igual queda visible
+  // y los demás medidores se dibujan sin problema.
   document.getElementById('gaugeCamarasTxt').textContent = fmtPct(nz(val('operatividad_camaras')));
-  makeGauge('gaugeRondas', nz(val('ejecucion_rondas')), COLORS.gold);
+  safeChart(()=> makeGauge('gaugeCamaras', nz(val('operatividad_camaras')), COLORS.blue));
+
   document.getElementById('gaugeRondasTxt').textContent = fmtPct(nz(val('ejecucion_rondas')));
-  makeGauge('gaugeLimpieza', nz(val('cumplimiento_limpieza')), COLORS.green);
+  safeChart(()=> makeGauge('gaugeRondas', nz(val('ejecucion_rondas')), COLORS.gold));
+
   document.getElementById('gaugeLimpiezaTxt').textContent = fmtPct(nz(val('cumplimiento_limpieza')));
-  makeGauge('gaugePreventivos', nz(val('cumplimiento_preventivos')), COLORS.gold);
+  safeChart(()=> makeGauge('gaugeLimpieza', nz(val('cumplimiento_limpieza')), COLORS.green));
+
   document.getElementById('gaugePreventivosTxt').textContent = fmtPct(nz(val('cumplimiento_preventivos')));
+  safeChart(()=> makeGauge('gaugePreventivos', nz(val('cumplimiento_preventivos')), COLORS.gold));
 
   document.getElementById('statTiempoResp').textContent = val('tiempo_respuesta')!==null ? fmtNum(val('tiempo_respuesta')) : '—';
 
   const corr = nz(val('ejecucion_correctivos')), ev = nz(val('ejecucion_eventos'));
-  makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]);
+  safeChart(()=> makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]));
 
   const now = new Date();
   document.getElementById('lastUpdate').textContent =
