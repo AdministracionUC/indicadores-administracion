@@ -1,548 +1,764 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - Estacionamiento UC Cusco</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --verde: #007A3D; --verde-osc: #005f2f; --negro: #1A1A1A; --fondo: #F4F4F4;
-      --borde: #e3e3e3; --texto: #333; --suave: #777;
-      --ok-bg: #D4EDDA; --ok: #155724; --info-bg: #CCE5FF; --info: #004085;
-      --aviso-bg: #FFF3CD; --aviso: #856404; --err-bg: #F8D7DA; --err: #721C24;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: var(--fondo); color: var(--texto); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Control Administrativo — Universidad Continental</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  if (typeof Chart === 'undefined') {
+    document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"><\/scr' + 'ipt>');
+  }
+</script>
+<style>
+  :root{
+    --bg:#050505;
+    --bg-grad:#000000;
+    --panel:#141414;
+    --panel-2:#1c1c1c;
+    --border:#2b2b2b;
+    --text:#f5f5f7;
+    --text-dim:#a6a6ad;
+    --text-faint:#6b6b73;
+    --purple:#8b5cf6;
+    --purple-2:#6d28d9;
+    --purple-soft:#241a3a;
+    --green:#4fa07a;
+    --green-soft:#173224;
+    --red:#d1685f;
+    --red-soft:#3a1f1e;
+    --blue:#5b8fc7;
+    --blue-soft:#12203a;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top, var(--bg) 0%, var(--bg-grad) 70%);
+    color:var(--text);
+    font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  h1,h2,h3, .num-display{font-family:'Sora','Inter',sans-serif;}
 
-    /* Cabecera */
-    .cab { background: var(--verde); color: #fff; border-bottom: 5px solid var(--negro); }
-    .cab-in { max-width: 1240px; margin: 0 auto; padding: 22px 22px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
-    .cab h1 { font-size: 1.35em; letter-spacing: .3px; }
-    .cab p { font-size: .88em; opacity: .88; margin-top: 4px; }
-    .estado { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; font-size: 12.5px; }
-    .btn-act { background: #fff; color: var(--verde); border: none; border-radius: 6px; padding: 8px 14px; font-weight: bold; font-size: 13px; cursor: pointer; }
-    .btn-act:hover { background: var(--ok-bg); }
+  /* ---------- Header ---------- */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:14px;
+    padding:22px 28px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand-mark{
+    width:44px;height:44px;border-radius:10px;
+    background:#000;
+    border:1.5px solid var(--purple);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:#fff;font-size:15px;letter-spacing:.5px;
+  }
+  .brand h1{font-size:18px; margin:0; letter-spacing:.3px; font-weight:700;}
+  .brand p{margin:2px 0 0; font-size:12.5px; color:var(--text-dim);}
 
-    /* Filtros */
-    .barra { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--borde); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-    .barra-in { max-width: 1240px; margin: 0 auto; padding: 10px 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .fila { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
-    .pill-reg { background: var(--fondo); border: 1px solid var(--borde); border-radius: 20px; padding: 5px 14px; font-size: 13px; }
-    .pill-reg b { color: var(--verde); font-size: 1.1em; margin-left: 4px; }
-    .barra label { font-size: 12.5px; font-weight: bold; color: var(--texto); margin-left: 6px; }
-    .chip { border: 1px solid #ccc; background: #fff; color: var(--texto); border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
-    .chip:hover { border-color: var(--verde); }
-    .chip.on { background: var(--verde); border-color: var(--verde); color: #fff; font-weight: bold; }
-    .barra input[type=date] { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-    .rango-txt { font-size: 12.5px; color: var(--suave); }
-    :focus-visible { outline: 2px solid var(--negro); outline-offset: 2px; }
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  select{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:9px;
+    font-size:13px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .last-update{font-size:11.5px; color:var(--text-faint); text-align:right;}
 
-    main { max-width: 1240px; margin: 0 auto; padding: 18px 22px 30px; }
+  main{padding:22px 28px;}
 
-    .banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: bold; display: none; }
-    .banner.aviso { background: var(--aviso-bg); color: var(--aviso); border: 1px solid #FFEEBA; }
-    .banner.err { background: var(--err-bg); color: var(--err); border: 1px solid #F5C6CB; }
+  /* ---------- KPI row ---------- */
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:16px;
+    margin-bottom:22px;
+  }
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    position:relative;
+    overflow:hidden;
+    text-align:center;
+  }
+  .kpi::before{
+    content:'';
+    position:absolute; left:0; top:0; bottom:0; width:4px;
+  }
+  .kpi.purple::before{background:var(--purple);}
+  .kpi.green::before{background:var(--green);}
+  .kpi.red::before{background:var(--red);}
+  .kpi-label{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-dim); font-weight:600; margin-bottom:10px;}
+  .kpi-value{font-size:34px; font-weight:800; line-height:1;}
+  .kpi-sub{font-size:12.5px; color:var(--text-dim); margin-top:8px;}
+  .progress-track{
+    width:100%; height:8px; border-radius:6px; background:#241f2e; margin-top:12px; overflow:hidden;
+  }
+  .progress-fill{height:100%; border-radius:6px; background:linear-gradient(90deg, var(--purple-2), var(--purple));}
+  .stars{font-size:22px; letter-spacing:2px; color:var(--purple);}
+  .stars .empty{color:#332a45;}
 
-    /* En vivo */
-    .vivo { background: var(--negro); color: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center; justify-content: center; gap: 30px; flex-wrap: wrap; }
-    .vivo-tit { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; font-size: 15px; width: 100%; }
-    .punto { width: 11px; height: 11px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 0 rgba(61,220,132,.6); animation: pulso 2s infinite; }
-    .punto.off { background: #888; animation: none; }
-    @keyframes pulso { 70% { box-shadow: 0 0 0 9px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
-    @media (prefers-reduced-motion: reduce) { .punto { animation: none; } }
-    .vivo-dato { display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .vivo-dato b { font-size: 1.8em; line-height: 1.1; }
-    .vivo-dato span { font-size: 12px; color: #bbb; }
-    .vivo-dato.grande b { color: #3ddc84; font-size: 2.3em; }
+  /* ---------- Section grid ---------- */
+  .section-title{
+    font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
+    padding:10px 14px; border-radius:9px; margin-bottom:14px;
+    text-align:center;
+  }
+  .st-navy{background:var(--blue-soft); color:#9fc1ea;}
+  .st-green{background:var(--green-soft); color:#8fd4ae;}
+  .st-gold{background:var(--purple-soft); color:#c9a9fb;}
 
-    /* Secciones */
-    h2 { font-size: 1.1em; text-align: center; margin: 34px 0 14px; color: var(--negro); letter-spacing: .3px; }
-    h2::after { content: ""; display: block; width: 56px; height: 4px; background: var(--verde); border-radius: 2px; margin: 8px auto 0; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; }
-    .kpi { background: #fff; border-radius: 10px; padding: 14px 16px; border-top: 4px solid var(--verde); box-shadow: 0 2px 8px rgba(0,0,0,.06); text-align: center; }
-    .kpi.neg { border-top-color: var(--negro); }
-    .kpi.azul { border-top-color: #2F6FDE; }
-    .kpi.amb { border-top-color: #E0A100; }
-    .kpi .et { font-size: 12px; color: var(--suave); }
-    .kpi .num { font-size: 1.9em; font-weight: bold; color: var(--negro); margin: 3px 0 2px; }
-    .kpi .sub { font-size: 11.5px; color: var(--suave); min-height: 14px; }
+  .cols{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(330px, 1fr));
+    gap:18px;
+    margin-bottom:22px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .row-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .subcard{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:11px;
+    padding:12px; display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .subcard .title{font-size:11px; color:var(--text-dim); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px;}
+  .gauge-wrap{position:relative; width:100%; max-width:150px; height:82px;}
+  .gauge-center{
+    position:absolute; left:0; right:0; bottom:2px; text-align:center;
+    font-size:19px; font-weight:800;
+  }
+  .big-stat{font-size:28px; font-weight:800; margin-top:14px;}
+  .big-stat-unit{font-size:13px; color:var(--text-dim); font-weight:500;}
 
-    .rejilla { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; margin-top: 14px; }
-    .card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); min-width: 0; }
-    .card h3 { font-size: 13.5px; margin-bottom: 2px; color: var(--negro); text-align: center; }
-    .card .nota { font-size: 11.5px; color: var(--suave); margin-bottom: 10px; text-align: center; }
-    .cw { position: relative; height: 270px; }
-    .c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c6 { grid-column: span 6; } .c4 { grid-column: span 4; }
-    @media (max-width: 900px) { .c8, .c6, .c4 { grid-column: span 12; } }
-    @media (max-width: 700px) { .barra { position: static; } }
+  .chart-card{background:var(--panel-2); border:1px solid var(--border); border-radius:11px; padding:12px 14px 6px;}
+  .chart-card .title{font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px; text-align:center;}
+  .chart-box{position:relative; height:150px;}
 
-    .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
-    .tag { background: var(--fondo); border: 1px solid var(--borde); border-radius: 20px; padding: 4px 11px; font-size: 12px; }
-    .tag b { color: var(--verde); }
-    .vacio { display: block; text-align: center; color: var(--suave); font-size: 12.5px; }
+  /* ---------- Alerts table ---------- */
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{text-align:left; color:var(--text-faint); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:6px 6px; border-bottom:1px solid var(--border);}
+  td{padding:7px 6px; border-bottom:1px solid rgba(255,255,255,0.04);}
+  .badge{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;}
+  .badge.ok{background:var(--green-soft); color:#8fd4ae;}
+  .badge.alert{background:var(--red-soft); color:#f0a29a;}
 
-    .pie { background: var(--negro); color: #aaa; text-align: center; padding: 14px; font-size: 11.5px; }
-    .pie strong { color: #fff; }
-  </style>
+  /* ---------- Budget section ---------- */
+  .budget-panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:22px;
+  }
+  .budget-panel .chart-box{height:220px;}
+
+  .footer-strip{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:14px;
+  }
+  .chip{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    text-align:center;
+  }
+  .chip .val{font-size:20px; font-weight:800;}
+  .chip .lab{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.4px;}
+
+  footer{padding:0 28px; color:var(--text-faint); font-size:11.5px; font-style:italic;}
+
+  @media (max-width:640px){
+    .kpi-row{grid-template-columns:1fr;}
+    header{padding:16px;}
+    main{padding:16px;}
+  }
+</style>
 </head>
 <body>
 
-<header class="cab">
-  <div class="cab-in">
+<header>
+  <div class="brand">
+    <div class="brand-mark">UC</div>
     <div>
-      <h1>📊 Dashboard de Estacionamiento</h1>
-      <p>Universidad Continental — Sede Cusco</p>
+      <h1>Panel de Control Administrativo</h1>
+      <p>Universidad Continental · Coordinación Administrativa</p>
     </div>
-    <div class="estado">
-      <span id="estado-txt">⏳ Cargando datos...</span>
-      <button class="btn-act" id="btn-act" type="button">↻ Actualizar</button>
-    </div>
+  </div>
+  <div class="controls">
+    <select id="monthSelect"></select>
+    <div class="last-update" id="lastUpdate"></div>
   </div>
 </header>
 
-<div class="barra">
-  <div class="barra-in">
-    <div class="fila">
-      <button class="chip on" data-f="todo" type="button">Todo</button>
-      <button class="chip" data-f="hoy" type="button">Hoy</button>
-      <button class="chip" data-f="7" type="button">Últimos 7 días</button>
-      <button class="chip" data-f="30" type="button">Últimos 30 días</button>
-      <label for="f-desde">Desde</label><input type="date" id="f-desde">
-      <label for="f-hasta">Hasta</label><input type="date" id="f-hasta">
-    </div>
-    <div class="fila">
-      <span class="pill-reg">🚗 Autos registrados <b id="b-autos">—</b></span>
-      <span class="pill-reg">🏍️ Motos registradas <b id="b-motos">—</b></span>
-      <span class="rango-txt" id="rango-txt"></span>
-    </div>
-  </div>
-</div>
-
 <main>
-  <div class="banner aviso" id="aviso"></div>
-  <div class="banner err" id="error"></div>
 
-  <!-- EN VIVO -->
-  <div class="vivo" id="vivo">
-    <div class="vivo-tit"><span class="punto" id="punto"></span><span id="vivo-tit">Hoy en vivo</span></div>
-    <div class="vivo-dato grande"><b id="v-adentro">—</b><span>Adentro ahora</span></div>
-    <div class="vivo-dato"><b id="v-ing">—</b><span>Ingresos hoy</span></div>
-    <div class="vivo-dato"><b id="v-sal">—</b><span>Salidas hoy</span></div>
-    <div class="vivo-dato"><b id="v-moto">—</b><span>Motos hoy</span></div>
-    <div class="vivo-dato"><b id="v-ult">—</b><span>Último movimiento</span></div>
-  </div>
-
-  <div class="kpis">
-    <div class="kpi"><div class="et">Vehículos-día</div><div class="num" id="k-veh">—</div><div class="sub">Suma de vehículos de cada día</div></div>
-    <div class="kpi"><div class="et">Vehículos únicos</div><div class="num" id="k-uni">—</div><div class="sub">Personas distintas que ingresaron</div></div>
-    <div class="kpi neg"><div class="et">Ingresos (1+2)</div><div class="num" id="k-ing">—</div><div class="sub">Escaneos de entrada</div></div>
-    <div class="kpi neg"><div class="et">Salidas (1+2)</div><div class="num" id="k-sal">—</div><div class="sub">Escaneos de salida</div></div>
-    <div class="kpi"><div class="et">Promedio por día</div><div class="num" id="k-prom">—</div><div class="sub" id="k-prom-s"></div></div>
-    <div class="kpi azul"><div class="et">Permanencia promedio</div><div class="num" id="k-perm">—</div><div class="sub">Ingreso → salida</div></div>
-    <div class="kpi azul"><div class="et">Pico de ocupación</div><div class="num" id="k-pico">—</div><div class="sub" id="k-pico-s"></div></div>
-    <div class="kpi amb"><div class="et">Motos</div><div class="num" id="k-moto">—</div><div class="sub" id="k-moto-s"></div></div>
-  </div>
-
-  <h2>1. Uso del estacionamiento</h2>
-  <div class="rejilla">
-    <div class="card c8"><h3>Vehículos por día</h3><div class="nota">Tendencia del periodo seleccionado</div><div class="cw"><canvas id="g-tendencia"></canvas></div></div>
-    <div class="card c4"><h3>Uso por vínculo</h3><div class="nota">Vehículos-día según el vínculo declarado</div><div class="cw"><canvas id="g-vinculo"></canvas></div></div>
-    <div class="card c6"><h3>Promedio por día de la semana</h3><div class="nota">Vehículos por día, solo días con registros</div><div class="cw"><canvas id="g-semana"></canvas></div></div>
-    <div class="card c6"><h3>Autos y motos</h3><div class="nota">Según la columna Motos del formulario</div><div class="cw"><canvas id="g-tipo"></canvas></div></div>
-  </div>
-
-  <h2>2. Horarios de ingreso y salida</h2>
-  <div class="rejilla">
-    <div class="card c6"><h3>Horas pico</h3><div class="nota">Ingresos y salidas por hora</div><div class="cw"><canvas id="g-horas"></canvas></div></div>
-    <div class="card c6"><h3>Ocupación estimada por hora</h3><div class="nota">Vehículos dentro a mitad de cada hora (promedio y máximo)</div><div class="cw"><canvas id="g-ocupacion"></canvas></div></div>
-    <div class="card c12"><h3>Tiempo de permanencia</h3><div class="nota">Cuántos ingresos duran cada tramo de tiempo</div><div class="cw" style="height:230px"><canvas id="g-perm"></canvas></div></div>
-  </div>
-
-  <h2>3. Afluencia diaria por vínculo</h2>
-  <div class="rejilla">
-    <div class="card c12"><h3>Vehículos por día y vínculo</h3><div class="nota">Los vínculos combinados o distintos se agrupan en «Otro» para que las barras sumen el total del día</div><div class="cw" style="height:310px"><canvas id="g-apilado"></canvas></div></div>
-  </div>
-
-  <h2>4. Personas registradas</h2>
-  <div class="kpis">
-    <div class="kpi"><div class="et">Registrados</div><div class="num" id="r-total">—</div><div class="sub">Personas en el formulario</div></div>
-    <div class="kpi"><div class="et">QR enviados</div><div class="num" id="r-qr">—</div><div class="sub" id="r-qr-s"></div></div>
-    <div class="kpi azul"><div class="et">Usaron el estacionamiento</div><div class="num" id="r-uso">—</div><div class="sub" id="r-uso-s">En el periodo seleccionado</div></div>
-    <div class="kpi amb"><div class="et">Nunca han ingresado</div><div class="num" id="r-nunca">—</div><div class="sub">Registrados sin ningún ingreso</div></div>
-    <div class="kpi neg"><div class="et">Ingresaron sin registro</div><div class="num" id="r-sin">—</div><div class="sub">Ingresan pero no están en el formulario</div></div>
-  </div>
-  <div class="rejilla">
-    <div class="card c4"><h3>Registrados por vínculo</h3><div class="nota">Personas únicas</div><div class="cw"><canvas id="g-reg-vinculo"></canvas></div></div>
-    <div class="card c8"><h3>Registros en el tiempo</h3><div class="nota">Nuevos por día (barras) y acumulado (línea)</div><div class="cw"><canvas id="g-reg-tiempo"></canvas></div></div>
-  </div>
-
-  <h2>5. Incidencias y hallazgos de auditoría</h2>
-  <div class="kpis">
-    <div class="kpi neg"><div class="et">Incidentes en el campus</div><div class="num" id="i-inc">—</div><div class="sub" id="i-inc-s"></div></div>
-    <div class="kpi amb"><div class="et">Vehículos de otras sedes</div><div class="num" id="i-sedes">—</div><div class="sub" id="i-sedes-s"></div></div>
-    <div class="kpi amb"><div class="et">Sanciones aplicadas</div><div class="num" id="i-sanc">—</div><div class="sub" id="i-sanc-s"></div></div>
-    <div class="kpi amb"><div class="et">Correcciones de datos personales</div><div class="num" id="i-corr">—</div><div class="sub" id="i-corr-s"></div></div>
-    <div class="kpi amb"><div class="et">Correcciones de datos de vehículo</div><div class="num" id="i-auto">—</div><div class="sub" id="i-auto-s"></div></div>
-    <div class="kpi neg"><div class="et">Ingresos sin salida</div><div class="num" id="i-sinsal">—</div><div class="sub">Días anteriores, sin salida escaneada</div></div>
-  </div>
-  <div class="rejilla">
-    <div class="card c6"><h3>Incidentes por tipo</h3><div class="nota">Registrados desde incidentes.html</div><div class="cw" style="height:240px"><canvas id="g-inc-tipo"></canvas></div></div>
-    <div class="card c6">
-      <h3>Vehículos de otras sedes por sede</h3><div class="nota">Registrados por error en esta sede</div>
-      <div class="cw" style="height:240px"><canvas id="g-sedes"></canvas></div>
+  <div class="kpi-row">
+    <div class="kpi purple">
+      <div class="kpi-label">Presupuesto operativo ejecutado</div>
+      <div class="kpi-value" id="kpiPresupuestoPct">—</div>
+      <div class="progress-track"><div class="progress-fill" id="kpiPresupuestoBar" style="width:0%"></div></div>
+      <div class="kpi-sub" id="kpiPresupuestoSub">—</div>
     </div>
-    <div class="card c6"><h3>Detalle de sanciones y correcciones</h3><div class="nota">Por tipo, en el periodo seleccionado</div><div id="detalle-hall"></div></div>
-    <div class="card c6"><h3>Días con ingresos sin salida</h3><div class="nota">Revisar en el cierre de cada día</div><div id="detalle-sinsal"></div></div>
+    <div class="kpi green">
+      <div class="kpi-label">Índice general de cumplimiento</div>
+      <div class="stars" id="kpiStars">—</div>
+      <div class="kpi-sub" id="kpiStarsSub">Promedio de indicadores clave</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Alertas críticas activas</div>
+      <div class="kpi-value" id="kpiAlertCount" style="color:var(--red)">—</div>
+      <div class="kpi-sub" id="kpiAlertSub">Indicadores fuera de meta este mes</div>
+    </div>
   </div>
+
+  <div class="cols">
+
+    <!-- SEGURIDAD Y VIGILANCIA -->
+    <div class="panel">
+      <div class="section-title st-navy">Seguridad y Vigilancia</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Operatividad de cámaras</div>
+          <div class="gauge-wrap"><canvas id="gaugeCamaras"></canvas><div class="gauge-center" id="gaugeCamarasTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Ejecución de rondas</div>
+          <div class="gauge-wrap"><canvas id="gaugeRondas"></canvas><div class="gauge-center" id="gaugeRondasTxt">—</div></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Incidentes de seguridad por mes</div>
+        <div class="chart-box"><canvas id="chartIncidentes"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Alertas activas — detalle</div>
+        <table>
+          <thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th>Estado</th></tr></thead>
+          <tbody id="alertsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LIMPIEZA -->
+    <div class="panel">
+      <div class="section-title st-green">Limpieza</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Cumplimiento plan limpieza</div>
+          <div class="gauge-wrap"><canvas id="gaugeLimpieza"></canvas><div class="gauge-center" id="gaugeLimpiezaTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Tiempo de respuesta</div>
+          <div class="big-stat" id="statTiempoResp">—</div>
+          <div class="big-stat-unit">minutos (último mes)</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Incidencias OPL por mes</div>
+        <div class="chart-box"><canvas id="chartOPL"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Tiempo de respuesta a eventos (min)</div>
+        <div class="chart-box"><canvas id="chartTiempo"></canvas></div>
+      </div>
+    </div>
+
+    <!-- MANTENIMIENTO -->
+    <div class="panel">
+      <div class="section-title st-gold">Mantenimiento</div>
+      <div class="row-2">
+        <div class="subcard">
+          <div class="title">Cumpl. preventivos</div>
+          <div class="gauge-wrap"><canvas id="gaugePreventivos"></canvas><div class="gauge-center" id="gaugePreventivosTxt">—</div></div>
+        </div>
+        <div class="subcard">
+          <div class="title">Correctivos vs eventos</div>
+          <div class="gauge-wrap"><canvas id="donutCorrectivos"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Ejecución de correctivos por mes</div>
+        <div class="chart-box"><canvas id="chartCorrectivos"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="title">Ejecución de eventos por mes</div>
+        <div class="chart-box"><canvas id="chartEventos"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-strip">
+    <div class="chip"><div class="val" id="chipAusentismo">—</div><div class="lab">Ausentismo acumulado</div></div>
+    <div class="chip"><div class="val" id="chipReclamos">—</div><div class="lab">Reclamos acumulados</div></div>
+    <div class="chip"><div class="val" id="chipRobos">—</div><div class="lab">Robos / intrusiones YTD</div></div>
+    <div class="chip"><div class="val" id="chipAlquileres">—</div><div class="lab">Incid. espacios alquilados YTD</div></div>
+    <div class="chip"><div class="val" id="chipReclamosMes">—</div><div class="lab">Atención libro de reclamos (mes)</div></div>
+  </div>
+
+  <div class="budget-panel">
+    <div class="section-title st-navy" style="display:inline-block;">Presupuesto</div>
+    <div class="chart-box"><canvas id="chartPresupuesto"></canvas></div>
+  </div>
+
 </main>
 
-<div class="pie"><strong>Coordinación Administrativa — Universidad Continental Cusco</strong><br>Panel con datos agregados y anónimos · no se muestran DNI, nombres ni placas</div>
-
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbxQdbyQGrbkmtOKeQf-auTr3Ga_EtBmbm3Iq1k7w4VxH-hKq-Ari8WmyoI8z71PyuiP4g/exec";
-  const REFRESCO_MS = 60000;
-
-  const C = { verde: "#007A3D", negro: "#1A1A1A", azul: "#2F6FDE", ambar: "#E0A100", gris: "#9AA0A6", rojo: "#C0392B" };
-  const CATS = ["Docente", "Administrativo", "Alumno", "Otro"];
-  const COL_CATS = [C.verde, C.negro, C.azul, C.gris];
-  const DIAS_SEM = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const HORAS = Array.from({ length: 19 }, (_, i) => i + 5); // 05:00 a 23:00
-
-  Chart.defaults.font.family = "Arial, sans-serif";
-  Chart.defaults.color = "#555";
-
-  let DATA = null;
-  let filtro = { tipo: "todo", desde: "", hasta: "" };
-  const graficos = {};
-
-  const $ = id => document.getElementById(id);
-  const fmt = n => Number(n).toLocaleString("es-PE");
-  const pad = n => String(n).padStart(2, "0");
-  const fdmy = iso => { const p = iso.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; };
-  const fdm  = iso => { const p = iso.split("-"); return p[2] + "/" + p[1]; };
-  const hm   = min => pad(Math.floor(min / 60)) + ":" + pad(min % 60);
-  const durTxt = min => (!isFinite(min) || min <= 0) ? "—" : Math.floor(min / 60) + " h " + pad(Math.round(min % 60)) + " min";
-  const cat = mask => mask === 1 ? "Docente" : mask === 2 ? "Administrativo" : mask === 4 ? "Alumno" : "Otro";
-  function addDias(iso, n) {
-    const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n);
-    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+/* ================= DEFAULT DATA (respaldo mientras carga la primera sincronización) ================= */
+const DEFAULT = {
+  months: ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SETIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"],
+  presupuestoTotal: 4772601.92,
+  anio: 2026,
+  data: {
+    ausentismo: [5,0,6,4,0,9,0,30,null,null,null,null],
+    alcohol: [0,0,6,9,1,1,0,3,null,null,null,null],
+    drogas: [0,0,0,0,0,0,0,0,null,null,null,null],
+    robos: [0,0,0,0,0,0,0,0,null,null,null,null],
+    intrusiones: [0,0,0,0,0,0,0,0,null,null,null,null],
+    operatividad_camaras: [1,1,1,1,1,0.92,0.92,0.92,null,null,null,null],
+    reclamos: [0,0,0,0,0,0,2,0,1,null,null,null],
+    ejecucion_rondas: [0.35,0.35,0.35,0.5,0.5,0.5,0.5,0.5,null,null,null,null],
+    cumplimiento_limpieza: [1,1,1,1,1,1,1,1,null,null,null,null],
+    tiempo_respuesta: [45,45,45,45,45,45,30,30,null,null,null,null],
+    incidencias_opl: [0,0,0,0,0,1,0,1,null,null,null,null],
+    cumplimiento_preventivos: [1,1,1,1,1,1,1,1,null,null,null,null],
+    ejecucion_correctivos: [83,96,30,91,123,75,19,35,null,null,null,null],
+    ejecucion_eventos: [0,9,20,29,52,32,19,21,null,null,null,null],
+    incidencias_alquileres: [0,0,0,0,0,0,0,1,1,null,null,null],
+    ejecucion_presupuesto: [161399,169746,327912,413108,363048,393578,411518,397043,null,null,null,null]
   }
-  function setK(id, num, sub) {
-    $(id).textContent = num;
-    if (sub !== undefined && $(id + "-s")) $(id + "-s").textContent = sub;
-  }
+};
 
-  // ---------- Carga ----------
-  function cargar() {
-    $("btn-act").disabled = true;
-    fetch(API_URL, { method: "POST", body: JSON.stringify({ accion: "dashboard" }) })
-      .then(r => r.json())
-      .then(d => {
-        if (!d.ok) throw new Error(d.mensaje || "La API no respondió correctamente.");
-        DATA = d;
-        $("error").style.display = "none";
-        const av = (d.avisos || []).join(" · ");
-        $("aviso").style.display = av ? "block" : "none";
-        $("aviso").textContent = av ? "⚠️ " + av : "";
-        $("estado-txt").textContent = "🟢 Actualizado " + d.generado + " · se refresca cada 60 s";
-        render();
-      })
-      .catch(err => {
-        $("error").style.display = "block";
-        $("error").textContent = "❌ No se pudo cargar el dashboard. " + (err.message || "Verifica el internet.") +
-          (DATA ? " Se muestran los últimos datos cargados." : "");
-        $("estado-txt").textContent = "🔴 Sin conexión";
-      })
-      .finally(() => { $("btn-act").disabled = false; });
-  }
+const THRESHOLDS = {
+  operatividad_camaras: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  cumplimiento_limpieza: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  cumplimiento_preventivos: {min:0.95, label:"≥ 95%", fmt:'pct'},
+  ejecucion_rondas: {min:0.5, label:"≥ 50%", fmt:'pct'},
+  tiempo_respuesta: {max:40, label:"≤ 40 min", fmt:'num'},
+  ausentismo: {max:15, label:"≤ 15 casos", fmt:'num'},
+  incidencias_opl: {max:0, label:"0 incidencias", fmt:'num'}
+};
+const LABELS = {
+  operatividad_camaras:"Operatividad de cámaras", cumplimiento_limpieza:"Cumplimiento limpieza",
+  cumplimiento_preventivos:"Cumpl. preventivos", ejecucion_rondas:"Ejecución de rondas",
+  tiempo_respuesta:"Tiempo de respuesta", ausentismo:"Ausentismo del personal",
+  incidencias_opl:"Incidencias OPL"
+};
 
-  // ---------- Filtros ----------
-  function rangoActual() {
-    const fechas = DATA.dias.map(d => d.f);
-    const min = fechas.length ? fechas[0] : DATA.hoy;
-    const max = fechas.length ? fechas[fechas.length - 1] : DATA.hoy;
-    let desde = min, hasta = max;
-    if (filtro.tipo === "hoy") { desde = hasta = DATA.hoy; }
-    else if (filtro.tipo === "7")  { hasta = DATA.hoy; desde = addDias(DATA.hoy, -6); }
-    else if (filtro.tipo === "30") { hasta = DATA.hoy; desde = addDias(DATA.hoy, -29); }
-    else if (filtro.tipo === "custom") { desde = filtro.desde || min; hasta = filtro.hasta || max; }
-    return { desde, hasta };
-  }
+let STATE = JSON.parse(JSON.stringify(DEFAULT));
+let CHARTS = {};
+let CURRENT_IDX = null;
+let USER_SELECTED_IDX = null; // mes elegido a mano por el usuario; si es null, se usa el último mes con datos
 
-  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
-    filtro.tipo = b.dataset.f;
-    $("f-desde").value = ""; $("f-hasta").value = "";
-    document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b));
-    render();
-  }));
-  ["f-desde", "f-hasta"].forEach(id => $(id).addEventListener("change", () => {
-    filtro.tipo = "custom"; filtro.desde = $("f-desde").value; filtro.hasta = $("f-hasta").value;
-    document.querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
-    render();
-  }));
-  $("btn-act").addEventListener("click", cargar);
+/* URL de tu Google Apps Script desplegado como aplicación web ("Ejecutar como: Yo",
+   "Quién tiene acceso: Cualquier usuario"). Entrega los valores reales de la hoja
+   en JSON, sin pasar por texto/CSV, así que no se corren columnas ni se
+   deforman los porcentajes o montos. */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwW-xp97c-NrotJO-A6vD-VMKKIkSI12zpU47L6Wd0Vs8Yt7wB_Ibwqyl6mfAw7vgWt/exec";
 
-  // ---------- Cálculo ----------
-  function calcular(dias) {
-    const R = {
-      dias: [], vehDia: 0, ing: 0, sal: 0, motos: 0, autos: 0, sinSalida: 0,
-      horaIng: Array(24).fill(0), horaSal: Array(24).fill(0),
-      occSum: Array(24).fill(0), occMax: Array(24).fill(0), occDias: 0,
-      cats: {}, perm: [], wd: Array.from({ length: 7 }, () => ({ dias: 0, n: 0 })),
-      pico: { n: 0, f: "", min: 0 }, personas: new Set()
-    };
-    CATS.forEach(c => R.cats[c] = 0);
+const COLORS = {gold:'#8b5cf6', green:'#4fa07a', red:'#d1685f', blue:'#5b8fc7', track:'#241f2e', textDim:'#a6a6ad'};
 
-    dias.forEach(d => {
-      if (!d.r.length) return;
-      const esHoy = d.f === DATA.hoy;
-      const dia = { f: d.f, n: d.r.length, ing: 0, sal: 0, sinSalida: 0, cats: {} };
-      CATS.forEach(c => dia.cats[c] = 0);
-      const iv = [];
+function lastFilledIndex(arr){
+  for(let i=arr.length-1;i>=0;i--){ if(arr[i]!==null && arr[i]!==undefined && arr[i]!=='') return i; }
+  return -1;
+}
+function fmtPct(v){ return (v*100).toFixed(1)+'%'; }
+function fmtNum(v){ return Number(v).toLocaleString('es-PE'); }
+function fmtMoney(v){ return 'S/ '+Number(v).toLocaleString('es-PE', {maximumFractionDigits:0}); }
 
-      d.r.forEach(r => {
-        const [h, mask, moto, i1, s1, i2, s2] = r;
-        R.personas.add(h);
-        const c = cat(mask); R.cats[c]++; dia.cats[c]++;
-        if (moto) R.motos++; else R.autos++;
-        [[i1, s1], [i2, s2]].forEach(([i, s]) => {
-          if (i >= 0) { dia.ing++; R.horaIng[Math.min(23, Math.floor(i / 60))]++; }
-          if (s >= 0) { dia.sal++; R.horaSal[Math.min(23, Math.floor(s / 60))]++; }
-          if (i >= 0 && s >= i) { R.perm.push(s - i); if (s > i) iv.push([i, s]); }
-          else if (i >= 0 && s < 0) {
-            if (esHoy) { if (DATA.ahoraMin > i) iv.push([i, DATA.ahoraMin]); }
-            else dia.sinSalida++;
-          }
-        });
+/* ---------------- Gauge (half doughnut) ---------------- */
+function makeGauge(canvasId, value, color){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  const v = Math.max(0, Math.min(1, value||0));
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{ data:[v, 1-v], backgroundColor:[color, COLORS.track], borderWidth:0 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      circumference:180, rotation:270, cutout:'72%',
+      plugins:{legend:{display:false}, tooltip:{enabled:false}}
+    }
+  });
+}
+
+function baseLineOpts(yfmt){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ ticks:{color:COLORS.textDim, font:{size:9}}, grid:{color:'rgba(255,255,255,0.04)'} },
+      y:{ ticks:{color:COLORS.textDim, font:{size:9}, callback:(v)=> yfmt==='pct' ? (v*100)+'%' : v }, grid:{color:'rgba(255,255,255,0.06)'} }
+    }
+  };
+}
+function makeBar(canvasId, labels, series){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets: series.map(s=>({label:s.name, data:s.data, backgroundColor:s.color, borderRadius:3, maxBarThickness:16})) },
+    options: baseLineOpts('num')
+  });
+}
+function makeLine(canvasId, labels, series, yfmt){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets: series.map(s=>({
+        label:s.name, data:s.data, borderColor:s.color, backgroundColor:s.color+'22',
+        tension:.35, fill:true, pointRadius:3, pointBackgroundColor:s.color, spanGaps:false
+      })) },
+    options: baseLineOpts(yfmt)
+  });
+}
+function makeDonut(canvasId, values, colors){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(CHARTS[canvasId]) CHARTS[canvasId].destroy();
+  CHARTS[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ datasets:[{data:values, backgroundColor:colors, borderWidth:0}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{display:true, position:'bottom', labels:{color:COLORS.textDim, font:{size:9}, boxWidth:8, padding:6}}} }
+  });
+}
+
+function monthLabelsShort(months){ return months.map(m=>m.slice(0,3).charAt(0)+m.slice(1,3).toLowerCase()); }
+
+// Ejecuta una función de dibujo de gráfico atrapando cualquier error, para
+// que un fallo en un gráfico (p.ej. Chart.js no disponible) no bloquee el resto.
+function safeChart(fn){
+  try{ fn(); }
+  catch(err){ console.error('No se pudo dibujar un gráfico:', err); }
+}
+
+function render(){
+  const d = STATE.data;
+  const months = STATE.months;
+  const shortM = monthLabelsShort(months);
+
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  months.forEach((m,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = m.charAt(0)+m.slice(1).toLowerCase();
+    sel.appendChild(opt);
+  });
+
+  // Si el usuario ya eligió un mes a mano, respeta esa elección en cada
+  // sincronización automática; si no, muestra el último mes con datos.
+  const refIdx = lastFilledIndex(d.ejecucion_presupuesto);
+  const idxToUse = (USER_SELECTED_IDX !== null && USER_SELECTED_IDX < months.length)
+    ? USER_SELECTED_IDX
+    : (refIdx >= 0 ? refIdx : 0);
+  CURRENT_IDX = idxToUse;
+  sel.value = idxToUse;
+
+  // Los chips y las tarjetas KPI no dependen de Chart.js: se calculan primero
+  // para que siempre se vean, aunque falle el dibujo de algún gráfico.
+  const sum = (arr)=> arr.reduce((a,b)=> a + (b||0), 0);
+  document.getElementById('chipAusentismo').textContent = fmtNum(sum(d.ausentismo));
+  document.getElementById('chipReclamos').textContent = fmtNum(sum(d.reclamos));
+  document.getElementById('chipRobos').textContent = fmtNum(sum(d.robos)+sum(d.intrusiones));
+  document.getElementById('chipAlquileres').textContent = fmtNum(sum(d.incidencias_alquileres));
+
+  // Cada gráfico se dibuja en su propio try/catch: si uno falla (p.ej. porque
+  // Chart.js no cargó a tiempo), los demás igual se dibujan en vez de quedar
+  // todos en blanco.
+  safeChart(()=> renderForIndex(idxToUse));
+
+  safeChart(()=> makeBar('chartIncidentes', shortM, [
+    {name:'Ausentismo', data:d.ausentismo, color:COLORS.blue},
+    {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
+    {name:'Drogas', data:d.drogas, color:COLORS.red},
+  ]));
+  safeChart(()=> makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]));
+  safeChart(()=> makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num'));
+  safeChart(()=> makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]));
+  safeChart(()=> makeLine('chartEventos', shortM, [{name:'Eventos', data:d.ejecucion_eventos, color:COLORS.green}], 'num'));
+
+  safeChart(()=>{
+    const targetMensual = STATE.presupuestoTotal/12;
+    makeBar('chartPresupuesto', shortM, [
+      {name:'Ejecución mensual (S/)', data:d.ejecucion_presupuesto, color:COLORS.gold},
+    ]);
+    if(CHARTS['chartPresupuesto']){
+      CHARTS['chartPresupuesto'].data.datasets.push({
+        type:'line', label:'Presupuesto mensual promedio', data:months.map(()=>targetMensual),
+        borderColor:COLORS.red, borderDash:[6,4], pointRadius:0, borderWidth:1.5, fill:false
       });
+      CHARTS['chartPresupuesto'].options.plugins.legend.display = true;
+      CHARTS['chartPresupuesto'].options.plugins.legend.position = 'bottom';
+      CHARTS['chartPresupuesto'].options.plugins.legend.labels = {color:COLORS.textDim, font:{size:10}};
+      CHARTS['chartPresupuesto'].update();
+    }
+  });
+}
 
-      for (let h = 0; h < 24; h++) {
-        const t = h * 60 + 30; let n = 0;
-        iv.forEach(([a, b]) => { if (a <= t && t < b) n++; });
-        R.occSum[h] += n; if (n > R.occMax[h]) R.occMax[h] = n;
+function renderForIndex(idx){
+  const d = STATE.data;
+  CURRENT_IDX = idx;
+
+  const val = (key)=> d[key] && d[key][idx]!==undefined ? d[key][idx] : null;
+  const nz = (v)=> v===null||v===undefined ? 0 : v;
+
+  const acumulado = d.ejecucion_presupuesto.slice(0, idx+1).reduce((a,b)=>a+(b||0),0);
+  const pct = acumulado / STATE.presupuestoTotal;
+  document.getElementById('kpiPresupuestoPct').textContent = fmtPct(pct);
+  document.getElementById('kpiPresupuestoBar').style.width = Math.min(100, pct*100)+'%';
+  document.getElementById('kpiPresupuestoSub').textContent = fmtMoney(acumulado)+' de '+fmtMoney(STATE.presupuestoTotal);
+
+  const idxKeys = ['operatividad_camaras','cumplimiento_limpieza','cumplimiento_preventivos','ejecucion_rondas'];
+  const vals = idxKeys.map(k=>nz(val(k)));
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const score = avg*5;
+  const full = Math.floor(score);
+  const half = (score-full)>=0.5;
+  let starsHtml='';
+  for(let i=0;i<5;i++){
+    if(i<full) starsHtml+='★';
+    else if(i===full && half) starsHtml+='★';
+    else starsHtml+='<span class="empty">★</span>';
+  }
+  document.getElementById('kpiStars').innerHTML = starsHtml;
+  document.getElementById('kpiStarsSub').textContent = 'Promedio de indicadores clave · '+(avg*100).toFixed(0)+'/100';
+
+  let alerts = [];
+  Object.keys(THRESHOLDS).forEach(k=>{
+    const t = THRESHOLDS[k];
+    const v = val(k);
+    if(v===null) return;
+    let fail = false;
+    if(t.min!==undefined && v < t.min) fail = true;
+    if(t.max!==undefined && v > t.max) fail = true;
+    alerts.push({key:k, v, t, fail});
+  });
+  const failing = alerts.filter(a=>a.fail);
+  document.getElementById('kpiAlertCount').textContent = failing.length;
+  document.getElementById('kpiAlertSub').textContent = failing.length ? 'Requieren atención inmediata' : 'Todos los indicadores dentro de meta';
+
+  const tbody = document.getElementById('alertsBody');
+  tbody.innerHTML = '';
+  alerts.forEach(a=>{
+    const tr = document.createElement('tr');
+    const valTxt = a.t.fmt==='pct' ? fmtPct(a.v) : fmtNum(a.v);
+    tr.innerHTML = `<td>${LABELS[a.key]}</td><td>${valTxt}</td><td>${a.t.label}</td>
+      <td><span class="badge ${a.fail?'alert':'ok'}">${a.fail?'ALERTA':'OK'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Se pone primero el texto (no depende de Chart.js) y luego, por separado,
+  // se intenta dibujar cada medidor: si uno falla, el número igual queda visible
+  // y los demás medidores se dibujan sin problema.
+  document.getElementById('gaugeCamarasTxt').textContent = fmtPct(nz(val('operatividad_camaras')));
+  safeChart(()=> makeGauge('gaugeCamaras', nz(val('operatividad_camaras')), COLORS.blue));
+
+  document.getElementById('gaugeRondasTxt').textContent = fmtPct(nz(val('ejecucion_rondas')));
+  safeChart(()=> makeGauge('gaugeRondas', nz(val('ejecucion_rondas')), COLORS.gold));
+
+  document.getElementById('gaugeLimpiezaTxt').textContent = fmtPct(nz(val('cumplimiento_limpieza')));
+  safeChart(()=> makeGauge('gaugeLimpieza', nz(val('cumplimiento_limpieza')), COLORS.green));
+
+  document.getElementById('gaugePreventivosTxt').textContent = fmtPct(nz(val('cumplimiento_preventivos')));
+  safeChart(()=> makeGauge('gaugePreventivos', nz(val('cumplimiento_preventivos')), COLORS.gold));
+
+  document.getElementById('statTiempoResp').textContent = val('tiempo_respuesta')!==null ? fmtNum(val('tiempo_respuesta')) : '—';
+  document.getElementById('chipReclamosMes').textContent = fmtNum(nz(val('reclamos')));
+
+  const corr = nz(val('ejecucion_correctivos')), ev = nz(val('ejecucion_eventos'));
+  safeChart(()=> makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]));
+
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = 'Actualizado ' + now.toLocaleTimeString('es-PE');
+}
+
+document.getElementById('monthSelect').addEventListener('change', (e)=>{
+  USER_SELECTED_IDX = parseInt(e.target.value);
+  renderForIndex(USER_SELECTED_IDX);
+});
+
+/* ---------------- Mapeo de la hoja a la estructura del panel ---------------- */
+// En vez de depender de números de fila fijos (que se rompen si insertas o
+// mueves filas en tu Excel), el panel busca cada indicador por su NOMBRE.
+// Fila/columna de respaldo (las de tu plantilla original) solo se usan si,
+// por algún motivo, no se encuentra el nombre del indicador.
+const ROWMAP_RESPALDO = {
+  ausentismo:6, alcohol:7, drogas:8, robos:9, intrusiones:10, operatividad_camaras:11,
+  reclamos:12, ejecucion_rondas:13, cumplimiento_limpieza:14, tiempo_respuesta:15,
+  incidencias_opl:16, cumplimiento_preventivos:17, ejecucion_correctivos:18,
+  ejecucion_eventos:19, incidencias_alquileres:20, ejecucion_presupuesto:21
+};
+
+function normalizarTexto(s){
+  return String(s==null?'':s).toUpperCase()
+    .replace(/[ÁÀÂÄ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I')
+    .replace(/[ÓÒÔÖ]/g,'O').replace(/[ÚÙÛÜ]/g,'U').replace(/Ñ/g,'N')
+    .trim();
+}
+
+// Orden importa: los más específicos van primero para no confundir, por
+// ejemplo, "EJECUCIÓN DE EVENTOS" con "TIEMPO DE RESPUESTA A EVENTOS".
+const INDICADOR_MATCHERS = [
+  {key:'ausentismo', test:(t)=> t.includes('AUSENTISMO')},
+  {key:'alcohol', test:(t)=> t.includes('ALCOHOL')},
+  {key:'drogas', test:(t)=> t.includes('DROGA')},
+  {key:'robos', test:(t)=> t.includes('ROBO')},
+  {key:'intrusiones', test:(t)=> t.includes('INTRUS')},
+  {key:'operatividad_camaras', test:(t)=> t.includes('CAMARA')},
+  {key:'reclamos', test:(t)=> t.includes('RECLAMO')},
+  {key:'tiempo_respuesta', test:(t)=> t.includes('TIEMPO') && t.includes('RESPUESTA')},
+  {key:'ejecucion_rondas', test:(t)=> t.includes('RONDA')},
+  {key:'cumplimiento_limpieza', test:(t)=> t.includes('LIMPIEZA')},
+  {key:'incidencias_opl', test:(t)=> t.includes('OPL')},
+  {key:'cumplimiento_preventivos', test:(t)=> t.includes('PREVENTIVO')},
+  {key:'ejecucion_correctivos', test:(t)=> t.includes('CORRECTIV')},
+  {key:'ejecucion_eventos', test:(t)=> t.includes('EVENTO') && !t.includes('TIEMPO')},
+  {key:'incidencias_alquileres', test:(t)=> t.includes('ALQUILA') || t.includes('ALQUILER')},
+  {key:'ejecucion_presupuesto', test:(t,m)=> m.trim()==='S/'}
+];
+
+// Recorre toda la hoja y devuelve, para cada indicador, en qué número de fila
+// (1-indexado) lo encontró, buscando en la columna de "INDICADORES" (B) y
+// usando la de "METRICA" (C) solo para desempatar el caso del presupuesto.
+function encontrarFilasIndicadores(grid){
+  const filas = {};
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    const indicadorTxt = normalizarTexto(row[1]);
+    const metricaTxt = normalizarTexto(row[2]);
+    if(!indicadorTxt && !metricaTxt) continue;
+    for(const m of INDICADOR_MATCHERS){
+      if(filas[m.key] !== undefined) continue;
+      if(m.test(indicadorTxt, metricaTxt)){ filas[m.key] = r+1; break; }
+    }
+  }
+  return filas;
+}
+
+// Busca la celda "ENERO" en toda la hoja para saber en qué fila/columna
+// empiezan los meses, en vez de asumir que siempre es la fila 5, columna E.
+function encontrarInicioMeses(grid){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      if(normalizarTexto(row[c]).includes('ENERO')) return {fila:r+1, col:c+1};
+    }
+  }
+  return {fila:5, col:5}; // respaldo
+}
+
+// Busca la celda "PRESUPUESTO OPERATIVO" y toma el primer número que
+// encuentre a la derecha en esa misma fila.
+function encontrarPresupuestoTotal(grid){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      if(normalizarTexto(row[c]).includes('PRESUPUESTO OPERATIVO')){
+        for(let c2=c+1;c2<row.length;c2++){
+          if(typeof row[c2] === 'number') return row[c2];
+        }
       }
-      R.occDias++;
-      const ev = [];
-      iv.forEach(([a, b]) => { ev.push([a, 1]); ev.push([b, -1]); });
-      ev.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
-      let cur = 0;
-      ev.forEach(([t, v]) => { cur += v; if (cur > R.pico.n) R.pico = { n: cur, f: d.f, min: t }; });
-
-      const w = (new Date(d.f + "T12:00:00").getDay() + 6) % 7;
-      R.wd[w].dias++; R.wd[w].n += d.r.length;
-
-      R.vehDia += dia.n; R.ing += dia.ing; R.sal += dia.sal; R.sinSalida += dia.sinSalida;
-      R.dias.push(dia);
-    });
-    return R;
-  }
-
-  // ---------- Gráficos ----------
-  function opts(extra) {
-    return Object.assign({
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } } }
-    }, extra || {});
-  }
-  const ejeY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#eee" } };
-  const ejeX = { grid: { display: false } };
-
-  function grafico(id, tipo, data, options) {
-    if (graficos[id]) {
-      graficos[id].data = data;
-      graficos[id].update();
-    } else {
-      graficos[id] = new Chart($(id), { type: tipo, data: data, options: options });
     }
   }
-  function dona(id, etiquetas, valores, colores) {
-    const total = valores.reduce((a, b) => a + b, 0);
-    grafico(id, "doughnut", { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores, borderWidth: 2, borderColor: "#fff" }] },
-      opts({ cutout: "62%", plugins: {
-        legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } },
-        tooltip: { callbacks: { label: c => c.label + ": " + fmt(c.parsed) + (total ? " (" + Math.round(c.parsed * 100 / total) + "%)" : "") } }
-      } }));
-  }
+  return null;
+}
 
-  function renderCharts(R) {
-    const dias = R.dias, etq = dias.map(d => fdm(d.f));
-
-    grafico("g-tendencia", "line", { labels: etq, datasets: [
-      { label: "Vehículos por día", data: dias.map(d => d.n), borderColor: C.verde, backgroundColor: "rgba(0,122,61,.14)", fill: true, tension: .3, pointRadius: 3 },
-      { label: "Ingresos (1+2)", data: dias.map(d => d.ing), borderColor: C.negro, borderDash: [5, 4], tension: .3, pointRadius: 0 }
-    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
-
-    dona("g-vinculo", CATS, CATS.map(c => R.cats[c]), COL_CATS);
-
-    grafico("g-semana", "bar", { labels: DIAS_SEM, datasets: [{
-      label: "Promedio de vehículos", data: R.wd.map(w => w.dias ? Math.round(w.n / w.dias) : 0),
-      backgroundColor: C.verde, borderRadius: 4 }] }, opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
-
-    dona("g-tipo", ["Autos", "Motos"], [R.autos, R.motos], [C.verde, C.ambar]);
-
-    grafico("g-horas", "bar", { labels: HORAS.map(h => pad(h) + ":00"), datasets: [
-      { label: "Ingresos", data: HORAS.map(h => R.horaIng[h]), backgroundColor: "rgba(0,122,61,.8)", borderRadius: 3 },
-      { label: "Salidas", data: HORAS.map(h => R.horaSal[h]), backgroundColor: "rgba(26,26,26,.7)", borderRadius: 3 }
-    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
-
-    grafico("g-ocupacion", "line", { labels: HORAS.map(h => pad(h) + ":00"), datasets: [
-      { label: "Promedio", data: HORAS.map(h => R.occDias ? +(R.occSum[h] / R.occDias).toFixed(1) : 0), borderColor: C.verde, backgroundColor: "rgba(0,122,61,.14)", fill: true, tension: .3, pointRadius: 2 },
-      { label: "Máximo", data: HORAS.map(h => R.occMax[h]), borderColor: C.negro, borderDash: [5, 4], tension: .3, pointRadius: 0 }
-    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
-
-    const tramos = [["Menos de 1 h", 0, 60], ["1 – 3 h", 60, 180], ["3 – 6 h", 180, 360], ["6 – 9 h", 360, 540], ["9 – 12 h", 540, 720], ["Más de 12 h", 720, 1e9]];
-    grafico("g-perm", "bar", { labels: tramos.map(t => t[0]), datasets: [{
-      label: "Ingresos", data: tramos.map(t => R.perm.filter(p => p >= t[1] && p < t[2]).length),
-      backgroundColor: C.azul, borderRadius: 4 }] }, opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
-
-    grafico("g-apilado", "bar", { labels: etq, datasets: CATS.map((c, i) => ({
-      label: c, data: dias.map(d => d.cats[c]), backgroundColor: COL_CATS[i], borderRadius: 2 })) },
-      opts({ scales: { y: Object.assign({ stacked: true }, ejeY), x: Object.assign({ stacked: true }, ejeX) } }));
-  }
-
-  // ---------- Bloques ----------
-  function renderVivo() {
-    const hoy = DATA.dias.find(d => d.f === DATA.hoy);
-    $("vivo-tit").textContent = "Hoy en vivo · " + fdmy(DATA.hoy);
-    if (!hoy || !hoy.r.length) {
-      $("punto").classList.add("off");
-      ["v-adentro", "v-ing", "v-sal", "v-moto", "v-ult"].forEach(id => $(id).textContent = "—");
-      $("v-adentro").textContent = "0";
-      return;
+function mapGridToState(grid){
+  const get = (r,c)=>{
+    const row = grid[r-1];
+    if(!row) return null;
+    const v = row[c-1];
+    if(v === undefined || v === null || v === '') return null;
+    return v;
+  };
+  // Tu Apps Script entrega los valores reales de la celda (getValues), no texto
+  // formateado: un 92% ya llega como el número 0.92 y un monto como 4772601.92.
+  // Igual dejamos un respaldo por si alguna celda llegara como texto.
+  const toNum = (v)=>{
+    if(v===null || v===undefined || v==='') return null;
+    if(typeof v === 'number') return v;
+    let s = String(v).trim();
+    if(s==='') return null;
+    const isPct = s.includes('%');
+    s = s.replace(/[^0-9.,\-]/g,''); // quita "S/", espacios, "%", letras, etc.
+    if(s==='' || s==='-') return null;
+    if(s.includes(',')){
+      // Formato peruano/latino: "." = separador de miles, "," = decimal
+      s = s.replace(/\./g,'').replace(',', '.');
     }
-    $("punto").classList.remove("off");
-    let adentro = 0, ing = 0, sal = 0, motos = 0, ult = -1;
-    hoy.r.forEach(r => {
-      const [, , moto, i1, s1, i2, s2] = r;
-      if ((i1 >= 0 && s1 < 0) || (i2 >= 0 && s2 < 0)) adentro++;
-      [i1, i2].forEach(i => { if (i >= 0) ing++; });
-      [s1, s2].forEach(s => { if (s >= 0) sal++; });
-      if (moto) motos++;
-      [i1, s1, i2, s2].forEach(t => { if (t > ult) ult = t; });
+    let n = Number(s);
+    if(isNaN(n)) return null;
+    if(isPct) n = n/100;
+    return n;
+  };
+
+  const inicioMeses = encontrarInicioMeses(grid);
+  const colInicio = inicioMeses.col;
+
+  const months = [];
+  for(let i=0;i<12;i++){ const m = get(inicioMeses.fila, colInicio+i); months.push(m ? String(m) : STATE.months[i]); }
+
+  const filasEncontradas = encontrarFilasIndicadores(grid);
+
+  const newData = {};
+  Object.keys(ROWMAP_RESPALDO).forEach(key=>{
+    const row = filasEncontradas[key] !== undefined ? filasEncontradas[key] : ROWMAP_RESPALDO[key];
+    const arr = [];
+    for(let i=0;i<12;i++){ arr.push(toNum(get(row, colInicio+i))); }
+    newData[key] = arr;
+  });
+
+  const presupuestoTotal = encontrarPresupuestoTotal(grid) || toNum(get(3,2)) || STATE.presupuestoTotal;
+  const anio = STATE.anio;
+
+  return { months, presupuestoTotal, anio, data: newData };
+}
+
+
+/* ---------------- Sincronización automática y silenciosa con tu Apps Script ---------------- */
+function syncFromGoogleSheet(){
+  fetch(APPS_SCRIPT_URL, {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(grid=>{
+      STATE = mapGridToState(grid);
+      try{ localStorage.setItem('panel_admin_data', JSON.stringify(STATE)); }catch(e){}
+      render();
+    })
+    .catch(err=>{
+      // Si falla (ej. sin conexión momentánea), se mantienen los últimos datos cargados.
+      console.error('Sincronización con Apps Script falló:', err);
     });
-    $("v-adentro").textContent = fmt(adentro);
-    $("v-ing").textContent = fmt(ing);
-    $("v-sal").textContent = fmt(sal);
-    $("v-moto").textContent = fmt(motos);
-    $("v-ult").textContent = ult >= 0 ? hm(ult) : "—";
-  }
+}
 
-  function renderKPIs(R) {
-    const act = R.dias.length;
-    setK("k-veh", fmt(R.vehDia));
-    setK("k-uni", fmt(R.personas.size));
-    setK("k-ing", fmt(R.ing));
-    setK("k-sal", fmt(R.sal));
-    setK("k-prom", act ? fmt(Math.round(R.vehDia / act)) : "—", act ? "En " + act + (act === 1 ? " día" : " días") + " con registros" : "");
-    const prom = R.perm.length ? R.perm.reduce((a, b) => a + b, 0) / R.perm.length : NaN;
-    setK("k-perm", durTxt(prom));
-    setK("k-pico", R.pico.n ? fmt(R.pico.n) + " veh." : "—", R.pico.n ? fdm(R.pico.f) + " a las " + hm(R.pico.min) : "");
-    const tot = R.autos + R.motos;
-    setK("k-moto", fmt(R.motos), tot ? Math.round(R.motos * 100 / tot) + "% de los vehículos-día" : "");
-  }
-
-  function renderRegistros(R) {
-    const reg = DATA.reg;
-    const unicos = new Set(reg.map(r => r[0]));
-    const usadosTodo = new Set();
-    DATA.dias.forEach(d => d.r.forEach(r => usadosTodo.add(r[0])));
-
-    const vinc = {}; CATS.forEach(c => vinc[c] = 0);
-    const vistos = new Set();
-    reg.forEach(r => { if (!vistos.has(r[0])) { vistos.add(r[0]); vinc[cat(r[1])]++; } });
-
-    const qr = reg.filter(r => r[3] === 1).length;
-    setK("r-total", fmt(unicos.size));
-    setK("r-qr", fmt(qr), reg.length ? (reg.length - qr) + " pendientes de envío" : "");
-    const usaron = [...unicos].filter(h => R.personas.has(h)).length;
-    setK("r-uso", fmt(usaron), unicos.size ? Math.round(usaron * 100 / unicos.size) + "% de los registrados" : "");
-    setK("r-nunca", fmt([...unicos].filter(h => !usadosTodo.has(h)).length));
-    setK("r-sin", fmt([...R.personas].filter(h => !unicos.has(h)).length));
-
-    dona("g-reg-vinculo", CATS, CATS.map(c => vinc[c]), COL_CATS);
-
-    const porFecha = {};
-    reg.forEach(r => { if (r[4]) porFecha[r[4]] = (porFecha[r[4]] || 0) + 1; });
-    const fechas = Object.keys(porFecha).sort();
-    let acum = 0;
-    const acumulado = fechas.map(f => acum += porFecha[f]);
-    grafico("g-reg-tiempo", "bar", { labels: fechas.map(fdm), datasets: [
-      { type: "bar", label: "Nuevos por día", data: fechas.map(f => porFecha[f]), backgroundColor: "rgba(0,122,61,.75)", borderRadius: 3, yAxisID: "y" },
-      { type: "line", label: "Acumulado", data: acumulado, borderColor: C.negro, tension: .3, pointRadius: 0, yAxisID: "y1" }
-    ] }, opts({ scales: { y: ejeY, y1: { position: "right", beginAtZero: true, grid: { display: false }, ticks: { precision: 0 } }, x: ejeX } }));
-  }
-
-  function tags(mapa) {
-    const items = Object.entries(mapa).sort((a, b) => b[1] - a[1]);
-    if (!items.length) return '<span class="vacio">Sin casos en el periodo seleccionado.</span>';
-    return '<div class="chips">' + items.map(([k, v]) => '<span class="tag">' + k + ' · <b>' + v + '</b></span>').join("") + '</div>';
-  }
-  function contar(filas, idx) {
-    const m = {}; filas.forEach(f => { m[f[idx]] = (m[f[idx]] || 0) + 1; }); return m;
-  }
-
-  function renderIncidencias(desde, hasta, R) {
-    const inc = DATA.inc || {}, disp = inc.disponibles || {};
-    const en = k => (inc[k] || []).filter(x => x[0] >= desde && x[0] <= hasta);
-    const card = (k, idNum, idSub) => {
-      if (disp[k]) { $(idNum).textContent = fmt(en(k).length); $(idSub).textContent = ""; }
-      else { $(idNum).textContent = "—"; $(idSub).textContent = "Pestaña no encontrada"; }
-    };
-    const incs = en("incidentes");
-    card("incidentes", "i-inc", "i-inc-s");
-    if (disp.incidentes) $("i-inc-s").textContent = R.vehDia ? (incs.length * 1000 / R.vehDia).toFixed(1) + " por cada 1000 vehículos-día" : "";
-    card("sedes", "i-sedes", "i-sedes-s");
-    card("sanciones", "i-sanc", "i-sanc-s");
-    card("correcciones", "i-corr", "i-corr-s");
-    card("correccionesAuto", "i-auto", "i-auto-s");
-    setK("i-sinsal", fmt(R.sinSalida));
-
-    const tipos = ["Incidente Vehicular", "Incidente por Clima", "Suplantación de Vehículo"];
-    const porTipo = contar(incs, 1);
-    Object.keys(porTipo).forEach(t => { if (tipos.indexOf(t) < 0) tipos.push(t); });
-    grafico("g-inc-tipo", "bar", { labels: tipos, datasets: [{
-      label: "Incidentes", data: tipos.map(t => porTipo[t] || 0), backgroundColor: [C.negro, C.azul, C.ambar, C.gris], borderRadius: 4 }] },
-      opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
-
-    const sedes = contar(en("sedes"), 1);
-    const sk = Object.keys(sedes).sort((a, b) => sedes[b] - sedes[a]);
-    grafico("g-sedes", "bar", { labels: sk, datasets: [{ label: "Vehículos", data: sk.map(k => sedes[k]), backgroundColor: C.verde, borderRadius: 4 }] },
-      opts({ indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: ejeY, y: { grid: { display: false } } } }));
-
-    let html = "";
-    if (disp.sanciones) html += '<div class="nota" style="margin:0">Sanciones</div>' + tags(contar(en("sanciones"), 1));
-    if (disp.correcciones) html += '<div class="nota" style="margin:12px 0 0">Correcciones de datos personales</div>' + tags(contar(en("correcciones"), 1));
-    if (disp.correccionesAuto) html += '<div class="nota" style="margin:12px 0 0">Correcciones de datos de vehículo</div>' + tags(contar(en("correccionesAuto"), 1));
-    $("detalle-hall").innerHTML = html || '<span class="vacio">Aún no hay pestañas de sanciones o correcciones en el Excel de incidentes.</span>';
-
-    const conCasos = {};
-    R.dias.forEach(d => { if (d.sinSalida) conCasos[fdm(d.f)] = d.sinSalida; });
-    $("detalle-sinsal").innerHTML = Object.keys(conCasos).length ? tags(conCasos) : '<span class="vacio">Ningún caso en el periodo seleccionado. ✅</span>';
-  }
-
-  // ---------- Render general ----------
-  function render() {
-    if (!DATA) return;
-    const { desde, hasta } = rangoActual();
-    $("rango-txt").textContent = "Mostrando " + fdmy(desde) + " – " + fdmy(hasta);
-    const dias = DATA.dias.filter(d => d.f >= desde && d.f <= hasta);
-    const R = calcular(dias);
-    const motosReg = DATA.reg.filter(r => r[2] === 1).length;
-    $("b-motos").textContent = fmt(motosReg);
-    $("b-autos").textContent = fmt(DATA.reg.length - motosReg);
-    renderVivo();
-    renderKPIs(R);
-    renderCharts(R);
-    renderRegistros(R);
-    // Con "Todo" los incidentes y hallazgos se cuentan completos, aunque sean anteriores al primer día de uso
-    const todo = filtro.tipo === "todo";
-    renderIncidencias(todo ? "0000-01-01" : desde, todo ? "9999-12-31" : hasta, R);
-  }
-
-  cargar();
-  setInterval(cargar, REFRESCO_MS);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) cargar(); });
+/* ---------------- Inicio: restaura el último dato guardado y sincroniza de inmediato ---------------- */
+(function init(){
+  try{
+    const saved = localStorage.getItem('panel_admin_data');
+    if(saved){ STATE = JSON.parse(saved); }
+  }catch(err){}
+  render();
+  syncFromGoogleSheet();
+  setInterval(syncFromGoogleSheet, 60000);
+})();
 </script>
 </body>
 </html>
