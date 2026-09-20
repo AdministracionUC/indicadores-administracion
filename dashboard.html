@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Estacionamiento UC Cusco</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --verde: #007A3D; --verde-osc: #005f2f; --negro: #1A1A1A; --fondo: #F4F4F4;
+      --borde: #e3e3e3; --texto: #333; --suave: #777;
+      --ok-bg: #D4EDDA; --ok: #155724; --info-bg: #CCE5FF; --info: #004085;
+      --aviso-bg: #FFF3CD; --aviso: #856404; --err-bg: #F8D7DA; --err: #721C24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: var(--fondo); color: var(--texto); }
+
+    /* Cabecera */
+    .cab { background: var(--verde); color: #fff; border-bottom: 5px solid var(--negro); }
+    .cab-in { max-width: 1240px; margin: 0 auto; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .cab h1 { font-size: 1.35em; letter-spacing: .3px; }
+    .cab p { font-size: .88em; opacity: .88; margin-top: 4px; }
+    .estado { display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+    .btn-act { background: #fff; color: var(--verde); border: none; border-radius: 6px; padding: 8px 14px; font-weight: bold; font-size: 13px; cursor: pointer; }
+    .btn-act:hover { background: var(--ok-bg); }
+
+    /* Filtros */
+    .barra { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--borde); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .barra-in { max-width: 1240px; margin: 0 auto; padding: 10px 22px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .barra label { font-size: 12.5px; font-weight: bold; color: var(--texto); margin-left: 6px; }
+    .chip { border: 1px solid #ccc; background: #fff; color: var(--texto); border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+    .chip:hover { border-color: var(--verde); }
+    .chip.on { background: var(--verde); border-color: var(--verde); color: #fff; font-weight: bold; }
+    .barra input[type=date] { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    .rango-txt { margin-left: auto; font-size: 12.5px; color: var(--suave); }
+    :focus-visible { outline: 2px solid var(--negro); outline-offset: 2px; }
+
+    main { max-width: 1240px; margin: 0 auto; padding: 18px 22px 30px; }
+
+    .banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: bold; display: none; }
+    .banner.aviso { background: var(--aviso-bg); color: var(--aviso); border: 1px solid #FFEEBA; }
+    .banner.err { background: var(--err-bg); color: var(--err); border: 1px solid #F5C6CB; }
+
+    /* En vivo */
+    .vivo { background: var(--negro); color: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+    .vivo-tit { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 15px; }
+    .punto { width: 11px; height: 11px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 0 rgba(61,220,132,.6); animation: pulso 2s infinite; }
+    .punto.off { background: #888; animation: none; }
+    @keyframes pulso { 70% { box-shadow: 0 0 0 9px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
+    @media (prefers-reduced-motion: reduce) { .punto { animation: none; } }
+    .vivo-dato { display: flex; flex-direction: column; }
+    .vivo-dato b { font-size: 1.8em; line-height: 1.1; }
+    .vivo-dato span { font-size: 12px; color: #bbb; }
+    .vivo-dato.grande b { color: #3ddc84; font-size: 2.3em; }
+
+    /* Secciones */
+    h2 { font-size: 1.05em; margin: 26px 0 12px; padding-left: 10px; border-left: 5px solid var(--verde); color: var(--negro); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; }
+    .kpi { background: #fff; border-radius: 10px; padding: 14px 16px; border-left: 4px solid var(--verde); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .kpi.neg { border-left-color: var(--negro); }
+    .kpi.azul { border-left-color: #2F6FDE; }
+    .kpi.amb { border-left-color: #E0A100; }
+    .kpi .et { font-size: 12px; color: var(--suave); }
+    .kpi .num { font-size: 1.9em; font-weight: bold; color: var(--negro); margin: 3px 0 2px; }
+    .kpi .sub { font-size: 11.5px; color: var(--suave); min-height: 14px; }
+
+    .rejilla { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; margin-top: 14px; }
+    .card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); min-width: 0; }
+    .card h3 { font-size: 13.5px; margin-bottom: 2px; color: var(--negro); }
+    .card .nota { font-size: 11.5px; color: var(--suave); margin-bottom: 10px; }
+    .cw { position: relative; height: 270px; }
+    .c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c6 { grid-column: span 6; } .c4 { grid-column: span 4; }
+    @media (max-width: 900px) { .c8, .c6, .c4 { grid-column: span 12; } .rango-txt { margin-left: 0; width: 100%; } }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag { background: var(--fondo); border: 1px solid var(--borde); border-radius: 20px; padding: 4px 11px; font-size: 12px; }
+    .tag b { color: var(--verde); }
+    .vacio { color: var(--suave); font-size: 12.5px; }
+
+    .pie { background: var(--negro); color: #aaa; text-align: center; padding: 14px; font-size: 11.5px; }
+    .pie strong { color: #fff; }
+  </style>
+</head>
+<body>
+
+<header class="cab">
+  <div class="cab-in">
+    <div>
+      <h1>📊 Dashboard de Estacionamiento</h1>
+      <p>Universidad Continental — Sede Cusco</p>
+    </div>
+    <div class="estado">
+      <span id="estado-txt">⏳ Cargando datos...</span>
+      <button class="btn-act" id="btn-act" type="button">↻ Actualizar</button>
+    </div>
+  </div>
+</header>
+
+<div class="barra">
+  <div class="barra-in">
+    <button class="chip on" data-f="todo" type="button">Todo</button>
+    <button class="chip" data-f="hoy" type="button">Hoy</button>
+    <button class="chip" data-f="7" type="button">Últimos 7 días</button>
+    <button class="chip" data-f="30" type="button">Últimos 30 días</button>
+    <label for="f-desde">Desde</label><input type="date" id="f-desde">
+    <label for="f-hasta">Hasta</label><input type="date" id="f-hasta">
+    <span class="rango-txt" id="rango-txt"></span>
+  </div>
+</div>
+
+<main>
+  <div class="banner aviso" id="aviso"></div>
+  <div class="banner err" id="error"></div>
+
+  <!-- EN VIVO -->
+  <div class="vivo" id="vivo">
+    <div class="vivo-tit"><span class="punto" id="punto"></span><span id="vivo-tit">Hoy en vivo</span></div>
+    <div class="vivo-dato grande"><b id="v-adentro">—</b><span>Adentro ahora</span></div>
+    <div class="vivo-dato"><b id="v-ing">—</b><span>Ingresos hoy</span></div>
+    <div class="vivo-dato"><b id="v-sal">—</b><span>Salidas hoy</span></div>
+    <div class="vivo-dato"><b id="v-moto">—</b><span>Motos hoy</span></div>
+    <div class="vivo-dato"><b id="v-ult">—</b><span>Último movimiento</span></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="et">Vehículos-día</div><div class="num" id="k-veh">—</div><div class="sub">Suma de vehículos de cada día</div></div>
+    <div class="kpi"><div class="et">Vehículos únicos</div><div class="num" id="k-uni">—</div><div class="sub">Personas distintas que ingresaron</div></div>
+    <div class="kpi neg"><div class="et">Ingresos (1+2)</div><div class="num" id="k-ing">—</div><div class="sub">Escaneos de entrada</div></div>
+    <div class="kpi neg"><div class="et">Salidas (1+2)</div><div class="num" id="k-sal">—</div><div class="sub">Escaneos de salida</div></div>
+    <div class="kpi"><div class="et">Promedio por día</div><div class="num" id="k-prom">—</div><div class="sub" id="k-prom-s"></div></div>
+    <div class="kpi azul"><div class="et">Permanencia promedio</div><div class="num" id="k-perm">—</div><div class="sub">Ingreso → salida</div></div>
+    <div class="kpi azul"><div class="et">Pico de ocupación</div><div class="num" id="k-pico">—</div><div class="sub" id="k-pico-s"></div></div>
+    <div class="kpi amb"><div class="et">Motos</div><div class="num" id="k-moto">—</div><div class="sub" id="k-moto-s"></div></div>
+  </div>
+
+  <h2>1. Uso del estacionamiento</h2>
+  <div class="rejilla">
+    <div class="card c8"><h3>Vehículos por día</h3><div class="nota">Tendencia del periodo seleccionado</div><div class="cw"><canvas id="g-tendencia"></canvas></div></div>
+    <div class="card c4"><h3>Uso por vínculo</h3><div class="nota">Vehículos-día según el vínculo declarado</div><div class="cw"><canvas id="g-vinculo"></canvas></div></div>
+    <div class="card c6"><h3>Promedio por día de la semana</h3><div class="nota">Vehículos por día, solo días con registros</div><div class="cw"><canvas id="g-semana"></canvas></div></div>
+    <div class="card c6"><h3>Autos y motos</h3><div class="nota">Según la columna Motos del formulario</div><div class="cw"><canvas id="g-tipo"></canvas></div></div>
+  </div>
+
+  <h2>2. Horarios de ingreso y salida</h2>
+  <div class="rejilla">
+    <div class="card c6"><h3>Horas pico</h3><div class="nota">Ingresos y salidas por hora</div><div class="cw"><canvas id="g-horas"></canvas></div></div>
+    <div class="card c6"><h3>Ocupación estimada por hora</h3><div class="nota">Vehículos dentro a mitad de cada hora (promedio y máximo)</div><div class="cw"><canvas id="g-ocupacion"></canvas></div></div>
+    <div class="card c12"><h3>Tiempo de permanencia</h3><div class="nota">Cuántos ingresos duran cada tramo de tiempo</div><div class="cw" style="height:230px"><canvas id="g-perm"></canvas></div></div>
+  </div>
+
+  <h2>3. Afluencia diaria por vínculo</h2>
+  <div class="rejilla">
+    <div class="card c12"><h3>Vehículos por día y vínculo</h3><div class="nota">Los vínculos combinados (ej. docente y administrativo) van en su propia categoría para que las barras sumen el total del día</div><div class="cw" style="height:310px"><canvas id="g-apilado"></canvas></div></div>
+  </div>
+
+  <h2>4. Personas registradas</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="et">Registrados</div><div class="num" id="r-total">—</div><div class="sub">Personas en el formulario</div></div>
+    <div class="kpi"><div class="et">QR enviados</div><div class="num" id="r-qr">—</div><div class="sub" id="r-qr-s"></div></div>
+    <div class="kpi azul"><div class="et">Usaron el estacionamiento</div><div class="num" id="r-uso">—</div><div class="sub" id="r-uso-s">En el periodo seleccionado</div></div>
+    <div class="kpi amb"><div class="et">Nunca han ingresado</div><div class="num" id="r-nunca">—</div><div class="sub">Registrados sin ningún ingreso</div></div>
+    <div class="kpi neg"><div class="et">Ingresaron sin registro</div><div class="num" id="r-sin">—</div><div class="sub">Ingresan pero no están en el formulario</div></div>
+  </div>
+  <div class="rejilla">
+    <div class="card c4"><h3>Registrados por vínculo</h3><div class="nota">Personas únicas</div><div class="cw"><canvas id="g-reg-vinculo"></canvas></div></div>
+    <div class="card c8"><h3>Registros en el tiempo</h3><div class="nota">Nuevos por día (barras) y acumulado (línea)</div><div class="cw"><canvas id="g-reg-tiempo"></canvas></div></div>
+  </div>
+
+  <h2>5. Incidencias y hallazgos de auditoría</h2>
+  <div class="kpis">
+    <div class="kpi neg"><div class="et">Incidentes en el campus</div><div class="num" id="i-inc">—</div><div class="sub" id="i-inc-s"></div></div>
+    <div class="kpi amb"><div class="et">Vehículos de otras sedes</div><div class="num" id="i-sedes">—</div><div class="sub" id="i-sedes-s"></div></div>
+    <div class="kpi amb"><div class="et">Sanciones aplicadas</div><div class="num" id="i-sanc">—</div><div class="sub" id="i-sanc-s"></div></div>
+    <div class="kpi amb"><div class="et">Correcciones de datos personales</div><div class="num" id="i-corr">—</div><div class="sub" id="i-corr-s"></div></div>
+    <div class="kpi amb"><div class="et">Correcciones de datos de vehículo</div><div class="num" id="i-auto">—</div><div class="sub" id="i-auto-s"></div></div>
+    <div class="kpi neg"><div class="et">Ingresos sin salida</div><div class="num" id="i-sinsal">—</div><div class="sub">Días anteriores, sin salida escaneada</div></div>
+  </div>
+  <div class="rejilla">
+    <div class="card c6"><h3>Incidentes por tipo</h3><div class="nota">Registrados desde incidentes.html</div><div class="cw" style="height:240px"><canvas id="g-inc-tipo"></canvas></div></div>
+    <div class="card c6">
+      <h3>Vehículos de otras sedes por sede</h3><div class="nota">Registrados por error en esta sede</div>
+      <div class="cw" style="height:240px"><canvas id="g-sedes"></canvas></div>
+    </div>
+    <div class="card c6"><h3>Detalle de sanciones y correcciones</h3><div class="nota">Por tipo, en el periodo seleccionado</div><div id="detalle-hall"></div></div>
+    <div class="card c6"><h3>Días con ingresos sin salida</h3><div class="nota">Revisar en el cierre de cada día</div><div id="detalle-sinsal"></div></div>
+  </div>
+</main>
+
+<div class="pie"><strong>Coordinación Administrativa — Universidad Continental Cusco</strong><br>Panel con datos agregados y anónimos · no se muestran DNI, nombres ni placas</div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbxQdbyQGrbkmtOKeQf-auTr3Ga_EtBmbm3Iq1k7w4VxH-hKq-Ari8WmyoI8z71PyuiP4g/exec";
+  const REFRESCO_MS = 60000;
+
+  const C = { verde: "#007A3D", negro: "#1A1A1A", azul: "#2F6FDE", ambar: "#E0A100", gris: "#9AA0A6", rojo: "#C0392B" };
+  const CATS = ["Docente", "Administrativo", "Alumno", "Combinado / otro"];
+  const COL_CATS = [C.verde, C.negro, C.azul, C.gris];
+  const DIAS_SEM = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const HORAS = Array.from({ length: 19 }, (_, i) => i + 5); // 05:00 a 23:00
+
+  Chart.defaults.font.family = "Arial, sans-serif";
+  Chart.defaults.color = "#555";
+
+  let DATA = null;
+  let filtro = { tipo: "todo", desde: "", hasta: "" };
+  const graficos = {};
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Number(n).toLocaleString("es-PE");
+  const pad = n => String(n).padStart(2, "0");
+  const fdmy = iso => { const p = iso.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; };
+  const fdm  = iso => { const p = iso.split("-"); return p[2] + "/" + p[1]; };
+  const hm   = min => pad(Math.floor(min / 60)) + ":" + pad(min % 60);
+  const durTxt = min => (!isFinite(min) || min <= 0) ? "—" : Math.floor(min / 60) + " h " + pad(Math.round(min % 60)) + " min";
+  const cat = mask => mask === 1 ? "Docente" : mask === 2 ? "Administrativo" : mask === 4 ? "Alumno" : "Combinado / otro";
+  function addDias(iso, n) {
+    const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n);
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function setK(id, num, sub) {
+    $(id).textContent = num;
+    if (sub !== undefined && $(id + "-s")) $(id + "-s").textContent = sub;
+  }
+
+  // ---------- Carga ----------
+  function cargar() {
+    $("btn-act").disabled = true;
+    fetch(API_URL, { method: "POST", body: JSON.stringify({ accion: "dashboard" }) })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.ok) throw new Error(d.mensaje || "La API no respondió correctamente.");
+        DATA = d;
+        $("error").style.display = "none";
+        const av = (d.avisos || []).join(" · ");
+        $("aviso").style.display = av ? "block" : "none";
+        $("aviso").textContent = av ? "⚠️ " + av : "";
+        $("estado-txt").textContent = "🟢 Actualizado " + d.generado + " · se refresca cada 60 s";
+        render();
+      })
+      .catch(err => {
+        $("error").style.display = "block";
+        $("error").textContent = "❌ No se pudo cargar el dashboard. " + (err.message || "Verifica el internet.") +
+          (DATA ? " Se muestran los últimos datos cargados." : "");
+        $("estado-txt").textContent = "🔴 Sin conexión";
+      })
+      .finally(() => { $("btn-act").disabled = false; });
+  }
+
+  // ---------- Filtros ----------
+  function rangoActual() {
+    const fechas = DATA.dias.map(d => d.f);
+    const min = fechas.length ? fechas[0] : DATA.hoy;
+    const max = fechas.length ? fechas[fechas.length - 1] : DATA.hoy;
+    let desde = min, hasta = max;
+    if (filtro.tipo === "hoy") { desde = hasta = DATA.hoy; }
+    else if (filtro.tipo === "7")  { hasta = DATA.hoy; desde = addDias(DATA.hoy, -6); }
+    else if (filtro.tipo === "30") { hasta = DATA.hoy; desde = addDias(DATA.hoy, -29); }
+    else if (filtro.tipo === "custom") { desde = filtro.desde || min; hasta = filtro.hasta || max; }
+    return { desde, hasta };
+  }
+
+  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
+    filtro.tipo = b.dataset.f;
+    $("f-desde").value = ""; $("f-hasta").value = "";
+    document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b));
+    render();
+  }));
+  ["f-desde", "f-hasta"].forEach(id => $(id).addEventListener("change", () => {
+    filtro.tipo = "custom"; filtro.desde = $("f-desde").value; filtro.hasta = $("f-hasta").value;
+    document.querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
+    render();
+  }));
+  $("btn-act").addEventListener("click", cargar);
+
+  // ---------- Cálculo ----------
+  function calcular(dias) {
+    const R = {
+      dias: [], vehDia: 0, ing: 0, sal: 0, motos: 0, autos: 0, sinSalida: 0,
+      horaIng: Array(24).fill(0), horaSal: Array(24).fill(0),
+      occSum: Array(24).fill(0), occMax: Array(24).fill(0), occDias: 0,
+      cats: {}, perm: [], wd: Array.from({ length: 7 }, () => ({ dias: 0, n: 0 })),
+      pico: { n: 0, f: "", min: 0 }, personas: new Set()
+    };
+    CATS.forEach(c => R.cats[c] = 0);
+
+    dias.forEach(d => {
+      if (!d.r.length) return;
+      const esHoy = d.f === DATA.hoy;
+      const dia = { f: d.f, n: d.r.length, ing: 0, sal: 0, sinSalida: 0, cats: {} };
+      CATS.forEach(c => dia.cats[c] = 0);
+      const iv = [];
+
+      d.r.forEach(r => {
+        const [h, mask, moto, i1, s1, i2, s2] = r;
+        R.personas.add(h);
+        const c = cat(mask); R.cats[c]++; dia.cats[c]++;
+        if (moto) R.motos++; else R.autos++;
+        [[i1, s1], [i2, s2]].forEach(([i, s]) => {
+          if (i >= 0) { dia.ing++; R.horaIng[Math.min(23, Math.floor(i / 60))]++; }
+          if (s >= 0) { dia.sal++; R.horaSal[Math.min(23, Math.floor(s / 60))]++; }
+          if (i >= 0 && s >= i) { R.perm.push(s - i); if (s > i) iv.push([i, s]); }
+          else if (i >= 0 && s < 0) {
+            if (esHoy) { if (DATA.ahoraMin > i) iv.push([i, DATA.ahoraMin]); }
+            else dia.sinSalida++;
+          }
+        });
+      });
+
+      for (let h = 0; h < 24; h++) {
+        const t = h * 60 + 30; let n = 0;
+        iv.forEach(([a, b]) => { if (a <= t && t < b) n++; });
+        R.occSum[h] += n; if (n > R.occMax[h]) R.occMax[h] = n;
+      }
+      R.occDias++;
+      const ev = [];
+      iv.forEach(([a, b]) => { ev.push([a, 1]); ev.push([b, -1]); });
+      ev.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+      let cur = 0;
+      ev.forEach(([t, v]) => { cur += v; if (cur > R.pico.n) R.pico = { n: cur, f: d.f, min: t }; });
+
+      const w = (new Date(d.f + "T12:00:00").getDay() + 6) % 7;
+      R.wd[w].dias++; R.wd[w].n += d.r.length;
+
+      R.vehDia += dia.n; R.ing += dia.ing; R.sal += dia.sal; R.sinSalida += dia.sinSalida;
+      R.dias.push(dia);
+    });
+    return R;
+  }
+
+  // ---------- Gráficos ----------
+  function opts(extra) {
+    return Object.assign({
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } } }
+    }, extra || {});
+  }
+  const ejeY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#eee" } };
+  const ejeX = { grid: { display: false } };
+
+  function grafico(id, tipo, data, options) {
+    if (graficos[id]) {
+      graficos[id].data = data;
+      graficos[id].update();
+    } else {
+      graficos[id] = new Chart($(id), { type: tipo, data: data, options: options });
+    }
+  }
+  function dona(id, etiquetas, valores, colores) {
+    const total = valores.reduce((a, b) => a + b, 0);
+    grafico(id, "doughnut", { labels: etiquetas, datasets: [{ data: valores, backgroundColor: colores, borderWidth: 2, borderColor: "#fff" }] },
+      opts({ cutout: "62%", plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true } },
+        tooltip: { callbacks: { label: c => c.label + ": " + fmt(c.parsed) + (total ? " (" + Math.round(c.parsed * 100 / total) + "%)" : "") } }
+      } }));
+  }
+
+  function renderCharts(R) {
+    const dias = R.dias, etq = dias.map(d => fdm(d.f));
+
+    grafico("g-tendencia", "line", { labels: etq, datasets: [
+      { label: "Vehículos por día", data: dias.map(d => d.n), borderColor: C.verde, backgroundColor: "rgba(0,122,61,.14)", fill: true, tension: .3, pointRadius: 3 },
+      { label: "Ingresos (1+2)", data: dias.map(d => d.ing), borderColor: C.negro, borderDash: [5, 4], tension: .3, pointRadius: 0 }
+    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
+
+    dona("g-vinculo", CATS, CATS.map(c => R.cats[c]), COL_CATS);
+
+    grafico("g-semana", "bar", { labels: DIAS_SEM, datasets: [{
+      label: "Promedio de vehículos", data: R.wd.map(w => w.dias ? Math.round(w.n / w.dias) : 0),
+      backgroundColor: C.verde, borderRadius: 4 }] }, opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
+
+    dona("g-tipo", ["Autos", "Motos"], [R.autos, R.motos], [C.verde, C.ambar]);
+
+    grafico("g-horas", "bar", { labels: HORAS.map(h => pad(h) + ":00"), datasets: [
+      { label: "Ingresos", data: HORAS.map(h => R.horaIng[h]), backgroundColor: "rgba(0,122,61,.8)", borderRadius: 3 },
+      { label: "Salidas", data: HORAS.map(h => R.horaSal[h]), backgroundColor: "rgba(26,26,26,.7)", borderRadius: 3 }
+    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
+
+    grafico("g-ocupacion", "line", { labels: HORAS.map(h => pad(h) + ":00"), datasets: [
+      { label: "Promedio", data: HORAS.map(h => R.occDias ? +(R.occSum[h] / R.occDias).toFixed(1) : 0), borderColor: C.verde, backgroundColor: "rgba(0,122,61,.14)", fill: true, tension: .3, pointRadius: 2 },
+      { label: "Máximo", data: HORAS.map(h => R.occMax[h]), borderColor: C.negro, borderDash: [5, 4], tension: .3, pointRadius: 0 }
+    ] }, opts({ scales: { y: ejeY, x: ejeX } }));
+
+    const tramos = [["Menos de 1 h", 0, 60], ["1 – 3 h", 60, 180], ["3 – 6 h", 180, 360], ["6 – 9 h", 360, 540], ["9 – 12 h", 540, 720], ["Más de 12 h", 720, 1e9]];
+    grafico("g-perm", "bar", { labels: tramos.map(t => t[0]), datasets: [{
+      label: "Ingresos", data: tramos.map(t => R.perm.filter(p => p >= t[1] && p < t[2]).length),
+      backgroundColor: C.azul, borderRadius: 4 }] }, opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
+
+    grafico("g-apilado", "bar", { labels: etq, datasets: CATS.map((c, i) => ({
+      label: c, data: dias.map(d => d.cats[c]), backgroundColor: COL_CATS[i], borderRadius: 2 })) },
+      opts({ scales: { y: Object.assign({ stacked: true }, ejeY), x: Object.assign({ stacked: true }, ejeX) } }));
+  }
+
+  // ---------- Bloques ----------
+  function renderVivo() {
+    const hoy = DATA.dias.find(d => d.f === DATA.hoy);
+    $("vivo-tit").textContent = "Hoy en vivo · " + fdmy(DATA.hoy);
+    if (!hoy || !hoy.r.length) {
+      $("punto").classList.add("off");
+      ["v-adentro", "v-ing", "v-sal", "v-moto", "v-ult"].forEach(id => $(id).textContent = "—");
+      $("v-adentro").textContent = "0";
+      return;
+    }
+    $("punto").classList.remove("off");
+    let adentro = 0, ing = 0, sal = 0, motos = 0, ult = -1;
+    hoy.r.forEach(r => {
+      const [, , moto, i1, s1, i2, s2] = r;
+      if ((i1 >= 0 && s1 < 0) || (i2 >= 0 && s2 < 0)) adentro++;
+      [i1, i2].forEach(i => { if (i >= 0) ing++; });
+      [s1, s2].forEach(s => { if (s >= 0) sal++; });
+      if (moto) motos++;
+      [i1, s1, i2, s2].forEach(t => { if (t > ult) ult = t; });
+    });
+    $("v-adentro").textContent = fmt(adentro);
+    $("v-ing").textContent = fmt(ing);
+    $("v-sal").textContent = fmt(sal);
+    $("v-moto").textContent = fmt(motos);
+    $("v-ult").textContent = ult >= 0 ? hm(ult) : "—";
+  }
+
+  function renderKPIs(R) {
+    const act = R.dias.length;
+    setK("k-veh", fmt(R.vehDia));
+    setK("k-uni", fmt(R.personas.size));
+    setK("k-ing", fmt(R.ing));
+    setK("k-sal", fmt(R.sal));
+    setK("k-prom", act ? fmt(Math.round(R.vehDia / act)) : "—", act ? "En " + act + (act === 1 ? " día" : " días") + " con registros" : "");
+    const prom = R.perm.length ? R.perm.reduce((a, b) => a + b, 0) / R.perm.length : NaN;
+    setK("k-perm", durTxt(prom));
+    setK("k-pico", R.pico.n ? fmt(R.pico.n) + " veh." : "—", R.pico.n ? fdm(R.pico.f) + " a las " + hm(R.pico.min) : "");
+    const tot = R.autos + R.motos;
+    setK("k-moto", fmt(R.motos), tot ? Math.round(R.motos * 100 / tot) + "% de los vehículos-día" : "");
+  }
+
+  function renderRegistros(R) {
+    const reg = DATA.reg;
+    const unicos = new Set(reg.map(r => r[0]));
+    const usadosTodo = new Set();
+    DATA.dias.forEach(d => d.r.forEach(r => usadosTodo.add(r[0])));
+
+    const vinc = {}; CATS.forEach(c => vinc[c] = 0);
+    const vistos = new Set();
+    reg.forEach(r => { if (!vistos.has(r[0])) { vistos.add(r[0]); vinc[cat(r[1])]++; } });
+
+    const qr = reg.filter(r => r[3] === 1).length;
+    setK("r-total", fmt(unicos.size));
+    setK("r-qr", fmt(qr), reg.length ? (reg.length - qr) + " pendientes de envío" : "");
+    const usaron = [...unicos].filter(h => R.personas.has(h)).length;
+    setK("r-uso", fmt(usaron), unicos.size ? Math.round(usaron * 100 / unicos.size) + "% de los registrados" : "");
+    setK("r-nunca", fmt([...unicos].filter(h => !usadosTodo.has(h)).length));
+    setK("r-sin", fmt([...R.personas].filter(h => !unicos.has(h)).length));
+
+    dona("g-reg-vinculo", CATS, CATS.map(c => vinc[c]), COL_CATS);
+
+    const porFecha = {};
+    reg.forEach(r => { if (r[4]) porFecha[r[4]] = (porFecha[r[4]] || 0) + 1; });
+    const fechas = Object.keys(porFecha).sort();
+    let acum = 0;
+    const acumulado = fechas.map(f => acum += porFecha[f]);
+    grafico("g-reg-tiempo", "bar", { labels: fechas.map(fdm), datasets: [
+      { type: "bar", label: "Nuevos por día", data: fechas.map(f => porFecha[f]), backgroundColor: "rgba(0,122,61,.75)", borderRadius: 3, yAxisID: "y" },
+      { type: "line", label: "Acumulado", data: acumulado, borderColor: C.negro, tension: .3, pointRadius: 0, yAxisID: "y1" }
+    ] }, opts({ scales: { y: ejeY, y1: { position: "right", beginAtZero: true, grid: { display: false }, ticks: { precision: 0 } }, x: ejeX } }));
+  }
+
+  function tags(mapa) {
+    const items = Object.entries(mapa).sort((a, b) => b[1] - a[1]);
+    if (!items.length) return '<span class="vacio">Sin casos en el periodo seleccionado.</span>';
+    return '<div class="chips">' + items.map(([k, v]) => '<span class="tag">' + k + ' · <b>' + v + '</b></span>').join("") + '</div>';
+  }
+  function contar(filas, idx) {
+    const m = {}; filas.forEach(f => { m[f[idx]] = (m[f[idx]] || 0) + 1; }); return m;
+  }
+
+  function renderIncidencias(desde, hasta, R) {
+    const inc = DATA.inc || {}, disp = inc.disponibles || {};
+    const en = k => (inc[k] || []).filter(x => x[0] >= desde && x[0] <= hasta);
+    const card = (k, idNum, idSub) => {
+      if (disp[k]) { $(idNum).textContent = fmt(en(k).length); $(idSub).textContent = ""; }
+      else { $(idNum).textContent = "—"; $(idSub).textContent = "Pestaña no encontrada"; }
+    };
+    const incs = en("incidentes");
+    card("incidentes", "i-inc", "i-inc-s");
+    if (disp.incidentes) $("i-inc-s").textContent = R.vehDia ? (incs.length * 1000 / R.vehDia).toFixed(1) + " por cada 1000 vehículos-día" : "";
+    card("sedes", "i-sedes", "i-sedes-s");
+    card("sanciones", "i-sanc", "i-sanc-s");
+    card("correcciones", "i-corr", "i-corr-s");
+    card("correccionesAuto", "i-auto", "i-auto-s");
+    setK("i-sinsal", fmt(R.sinSalida));
+
+    const tipos = ["Incidente Vehicular", "Incidente por Clima", "Suplantación de Vehículo"];
+    const porTipo = contar(incs, 1);
+    Object.keys(porTipo).forEach(t => { if (tipos.indexOf(t) < 0) tipos.push(t); });
+    grafico("g-inc-tipo", "bar", { labels: tipos, datasets: [{
+      label: "Incidentes", data: tipos.map(t => porTipo[t] || 0), backgroundColor: [C.negro, C.azul, C.ambar, C.gris], borderRadius: 4 }] },
+      opts({ plugins: { legend: { display: false } }, scales: { y: ejeY, x: ejeX } }));
+
+    const sedes = contar(en("sedes"), 1);
+    const sk = Object.keys(sedes).sort((a, b) => sedes[b] - sedes[a]);
+    grafico("g-sedes", "bar", { labels: sk, datasets: [{ label: "Vehículos", data: sk.map(k => sedes[k]), backgroundColor: C.verde, borderRadius: 4 }] },
+      opts({ indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: ejeY, y: { grid: { display: false } } } }));
+
+    let html = "";
+    if (disp.sanciones) html += '<div class="nota" style="margin:0">Sanciones</div>' + tags(contar(en("sanciones"), 1));
+    if (disp.correcciones) html += '<div class="nota" style="margin:12px 0 0">Correcciones de datos personales</div>' + tags(contar(en("correcciones"), 1));
+    if (disp.correccionesAuto) html += '<div class="nota" style="margin:12px 0 0">Correcciones de datos de vehículo</div>' + tags(contar(en("correccionesAuto"), 1));
+    $("detalle-hall").innerHTML = html || '<span class="vacio">Aún no hay pestañas de sanciones o correcciones en el Excel de incidentes.</span>';
+
+    const conCasos = {};
+    R.dias.forEach(d => { if (d.sinSalida) conCasos[fdm(d.f)] = d.sinSalida; });
+    $("detalle-sinsal").innerHTML = Object.keys(conCasos).length ? tags(conCasos) : '<span class="vacio">Ningún caso en el periodo seleccionado. ✅</span>';
+  }
+
+  // ---------- Render general ----------
+  function render() {
+    if (!DATA) return;
+    const { desde, hasta } = rangoActual();
+    $("rango-txt").textContent = "Mostrando " + fdmy(desde) + " – " + fdmy(hasta);
+    const dias = DATA.dias.filter(d => d.f >= desde && d.f <= hasta);
+    const R = calcular(dias);
+    renderVivo();
+    renderKPIs(R);
+    renderCharts(R);
+    renderRegistros(R);
+    renderIncidencias(desde, hasta, R);
+  }
+
+  cargar();
+  setInterval(cargar, REFRESCO_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) cargar(); });
+</script>
+</body>
+</html>
