@@ -12,12 +12,6 @@
     document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"><\/scr' + 'ipt>');
   }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script>
-  if (typeof Papa === 'undefined') {
-    document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"><\/scr' + 'ipt>');
-  }
-</script>
 <style>
   :root{
     --bg:#050505;
@@ -370,14 +364,11 @@ let CHARTS = {};
 let CURRENT_IDX = null;
 let USER_SELECTED_IDX = null; // mes elegido a mano por el usuario; si es null, se usa el último mes con datos
 
-/* ID y gid tomados directamente del link de Google Sheets que diste.
-   Si algún día cambias de hoja, solo reemplaza estas dos constantes. */
-const SHEET_ID = "10kAR4FTV0fV_8V_VKITuDYjbOWgMLDOjLDuXyzMdbpE";
-const SHEET_GID = "212610485";
-/* Endpoint "gviz" en vez de "/export?format=csv": este sí responde con
-   encabezados CORS para hojas compartidas como "Cualquiera con el enlace"
-   o publicadas en la web, por eso antes fallaba la sincronización. */
-const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
+/* URL de tu Google Apps Script desplegado como aplicación web ("Ejecutar como: Yo",
+   "Quién tiene acceso: Cualquier usuario"). Entrega los valores reales de la hoja
+   en JSON, sin pasar por texto/CSV, así que no se corren columnas ni se
+   deforman los porcentajes o montos. */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwW-xp97c-NrotJO-A6vD-VMKKIkSI12zpU47L6Wd0Vs8Yt7wB_Ibwqyl6mfAw7vgWt/exec";
 
 const COLORS = {gold:'#8b5cf6', green:'#4fa07a', red:'#d1685f', blue:'#5b8fc7', track:'#241f2e', textDim:'#a6a6ad'};
 
@@ -616,12 +607,12 @@ function mapGridToState(grid){
     if(v === undefined || v === null || v === '') return null;
     return v;
   };
-  // Google Sheets exporta el CSV con el texto ya formateado de cada celda,
-  // no el número puro: un 92% llega como "92%" y un monto llega en formato
-  // peruano, con punto como separador de miles y coma como decimal
-  // (ej. "S/ 4.772.601,92"). Hay que interpretar ambos casos antes de convertir a número.
+  // Tu Apps Script entrega los valores reales de la celda (getValues), no texto
+  // formateado: un 92% ya llega como el número 0.92 y un monto como 4772601.92.
+  // Igual dejamos un respaldo por si alguna celda llegara como texto.
   const toNum = (v)=>{
-    if(v===null) return null;
+    if(v===null || v===undefined || v==='') return null;
+    if(typeof v === 'number') return v;
     let s = String(v).trim();
     if(s==='') return null;
     const isPct = s.includes('%');
@@ -655,19 +646,18 @@ function mapGridToState(grid){
   return { months, presupuestoTotal, anio, data: newData };
 }
 
-/* ---------------- Sincronización automática y silenciosa con Google Sheets ---------------- */
+/* ---------------- Sincronización automática y silenciosa con tu Apps Script ---------------- */
 function syncFromGoogleSheet(){
-  fetch(SHEET_CSV_URL, {cache:'no-store'})
-    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-    .then(csvText=>{
-      const parsed = Papa.parse(csvText, {skipEmptyLines:false});
-      STATE = mapGridToState(parsed.data);
+  fetch(APPS_SCRIPT_URL, {cache:'no-store'})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(grid=>{
+      STATE = mapGridToState(grid);
       try{ localStorage.setItem('panel_admin_data', JSON.stringify(STATE)); }catch(e){}
       render();
     })
     .catch(err=>{
       // Si falla (ej. sin conexión momentánea), se mantienen los últimos datos cargados.
-      console.error('Sincronización con Google Sheets falló:', err);
+      console.error('Sincronización con Apps Script falló:', err);
     });
 }
 
