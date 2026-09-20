@@ -521,7 +521,9 @@
     renderKPIs(R);
     renderCharts(R);
     renderRegistros(R);
-    renderIncidencias(desde, hasta, R);
+    // Con "Todo" los incidentes y hallazgos se cuentan completos, aunque sean anteriores al primer día de uso
+    const todo = filtro.tipo === "todo";
+    renderIncidencias(todo ? "0000-01-01" : desde, todo ? "9999-12-31" : hasta, R);
   }
 
   cargar();
