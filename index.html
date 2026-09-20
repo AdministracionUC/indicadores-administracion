@@ -246,6 +246,10 @@
         <div class="chart-box"><canvas id="chartIncidentes"></canvas></div>
       </div>
       <div class="chart-card">
+        <div class="title">Atención libro de reclamos por mes</div>
+        <div class="chart-box"><canvas id="chartReclamos"></canvas></div>
+      </div>
+      <div class="chart-card">
         <div class="title">Alertas activas — detalle</div>
         <table>
           <thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th>Estado</th></tr></thead>
@@ -487,6 +491,7 @@ function render(){
     {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
     {name:'Drogas', data:d.drogas, color:COLORS.red},
   ]));
+  safeChart(()=> makeBar('chartReclamos', shortM, [{name:'Reclamos', data:d.reclamos, color:COLORS.blue}]));
   safeChart(()=> makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]));
   safeChart(()=> makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num'));
   safeChart(()=> makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]));
