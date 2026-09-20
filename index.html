@@ -592,12 +592,93 @@ document.getElementById('monthSelect').addEventListener('change', (e)=>{
 });
 
 /* ---------------- Mapeo de la hoja a la estructura del panel ---------------- */
-const ROWMAP = {
+// En vez de depender de números de fila fijos (que se rompen si insertas o
+// mueves filas en tu Excel), el panel busca cada indicador por su NOMBRE.
+// Fila/columna de respaldo (las de tu plantilla original) solo se usan si,
+// por algún motivo, no se encuentra el nombre del indicador.
+const ROWMAP_RESPALDO = {
   ausentismo:6, alcohol:7, drogas:8, robos:9, intrusiones:10, operatividad_camaras:11,
   reclamos:12, ejecucion_rondas:13, cumplimiento_limpieza:14, tiempo_respuesta:15,
   incidencias_opl:16, cumplimiento_preventivos:17, ejecucion_correctivos:18,
   ejecucion_eventos:19, incidencias_alquileres:20, ejecucion_presupuesto:21
 };
+
+function normalizarTexto(s){
+  return String(s==null?'':s).toUpperCase()
+    .replace(/[ÁÀÂÄ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I')
+    .replace(/[ÓÒÔÖ]/g,'O').replace(/[ÚÙÛÜ]/g,'U').replace(/Ñ/g,'N')
+    .trim();
+}
+
+// Orden importa: los más específicos van primero para no confundir, por
+// ejemplo, "EJECUCIÓN DE EVENTOS" con "TIEMPO DE RESPUESTA A EVENTOS".
+const INDICADOR_MATCHERS = [
+  {key:'ausentismo', test:(t)=> t.includes('AUSENTISMO')},
+  {key:'alcohol', test:(t)=> t.includes('ALCOHOL')},
+  {key:'drogas', test:(t)=> t.includes('DROGA')},
+  {key:'robos', test:(t)=> t.includes('ROBO')},
+  {key:'intrusiones', test:(t)=> t.includes('INTRUS')},
+  {key:'operatividad_camaras', test:(t)=> t.includes('CAMARA')},
+  {key:'reclamos', test:(t)=> t.includes('RECLAMO')},
+  {key:'tiempo_respuesta', test:(t)=> t.includes('TIEMPO') && t.includes('RESPUESTA')},
+  {key:'ejecucion_rondas', test:(t)=> t.includes('RONDA')},
+  {key:'cumplimiento_limpieza', test:(t)=> t.includes('LIMPIEZA')},
+  {key:'incidencias_opl', test:(t)=> t.includes('OPL')},
+  {key:'cumplimiento_preventivos', test:(t)=> t.includes('PREVENTIVO')},
+  {key:'ejecucion_correctivos', test:(t)=> t.includes('CORRECTIV')},
+  {key:'ejecucion_eventos', test:(t)=> t.includes('EVENTO') && !t.includes('TIEMPO')},
+  {key:'incidencias_alquileres', test:(t)=> t.includes('ALQUILA') || t.includes('ALQUILER')},
+  {key:'ejecucion_presupuesto', test:(t,m)=> m.trim()==='S/'}
+];
+
+// Recorre toda la hoja y devuelve, para cada indicador, en qué número de fila
+// (1-indexado) lo encontró, buscando en la columna de "INDICADORES" (B) y
+// usando la de "METRICA" (C) solo para desempatar el caso del presupuesto.
+function encontrarFilasIndicadores(grid){
+  const filas = {};
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    const indicadorTxt = normalizarTexto(row[1]);
+    const metricaTxt = normalizarTexto(row[2]);
+    if(!indicadorTxt && !metricaTxt) continue;
+    for(const m of INDICADOR_MATCHERS){
+      if(filas[m.key] !== undefined) continue;
+      if(m.test(indicadorTxt, metricaTxt)){ filas[m.key] = r+1; break; }
+    }
+  }
+  return filas;
+}
+
+// Busca la celda "ENERO" en toda la hoja para saber en qué fila/columna
+// empiezan los meses, en vez de asumir que siempre es la fila 5, columna E.
+function encontrarInicioMeses(grid){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      if(normalizarTexto(row[c]).includes('ENERO')) return {fila:r+1, col:c+1};
+    }
+  }
+  return {fila:5, col:5}; // respaldo
+}
+
+// Busca la celda "PRESUPUESTO OPERATIVO" y toma el primer número que
+// encuentre a la derecha en esa misma fila.
+function encontrarPresupuestoTotal(grid){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      if(normalizarTexto(row[c]).includes('PRESUPUESTO OPERATIVO')){
+        for(let c2=c+1;c2<row.length;c2++){
+          if(typeof row[c2] === 'number') return row[c2];
+        }
+      }
+    }
+  }
+  return null;
+}
 
 function mapGridToState(grid){
   const get = (r,c)=>{
@@ -628,23 +709,28 @@ function mapGridToState(grid){
     return n;
   };
 
-  // Meses: de ENERO a DICIEMBRE son las columnas E(5) a P(16) en tu plantilla.
+  const inicioMeses = encontrarInicioMeses(grid);
+  const colInicio = inicioMeses.col;
+
   const months = [];
-  for(let c=5;c<=16;c++){ const m = get(5,c); months.push(m ? String(m) : STATE.months[c-5]); }
+  for(let i=0;i<12;i++){ const m = get(inicioMeses.fila, colInicio+i); months.push(m ? String(m) : STATE.months[i]); }
+
+  const filasEncontradas = encontrarFilasIndicadores(grid);
 
   const newData = {};
-  Object.keys(ROWMAP).forEach(key=>{
-    const row = ROWMAP[key];
+  Object.keys(ROWMAP_RESPALDO).forEach(key=>{
+    const row = filasEncontradas[key] !== undefined ? filasEncontradas[key] : ROWMAP_RESPALDO[key];
     const arr = [];
-    for(let c=5;c<=16;c++){ arr.push(toNum(get(row,c))); }
+    for(let i=0;i<12;i++){ arr.push(toNum(get(row, colInicio+i))); }
     newData[key] = arr;
   });
 
-  const presupuestoTotal = toNum(get(3,2)) || STATE.presupuestoTotal;
-  const anio = get(4,5) || STATE.anio;
+  const presupuestoTotal = encontrarPresupuestoTotal(grid) || toNum(get(3,2)) || STATE.presupuestoTotal;
+  const anio = STATE.anio;
 
   return { months, presupuestoTotal, anio, data: newData };
 }
+
 
 /* ---------------- Sincronización automática y silenciosa con tu Apps Script ---------------- */
 function syncFromGoogleSheet(){
