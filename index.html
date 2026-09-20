@@ -246,10 +246,6 @@
         <div class="chart-box"><canvas id="chartIncidentes"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="title">Atención libro de reclamos por mes</div>
-        <div class="chart-box"><canvas id="chartReclamos"></canvas></div>
-      </div>
-      <div class="chart-card">
         <div class="title">Alertas activas — detalle</div>
         <table>
           <thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th>Estado</th></tr></thead>
@@ -312,6 +308,7 @@
     <div class="chip"><div class="val" id="chipReclamos">—</div><div class="lab">Reclamos acumulados</div></div>
     <div class="chip"><div class="val" id="chipRobos">—</div><div class="lab">Robos / intrusiones YTD</div></div>
     <div class="chip"><div class="val" id="chipAlquileres">—</div><div class="lab">Incid. espacios alquilados YTD</div></div>
+    <div class="chip"><div class="val" id="chipReclamosMes">—</div><div class="lab">Atención libro de reclamos (mes)</div></div>
   </div>
 
   <div class="budget-panel">
@@ -491,7 +488,6 @@ function render(){
     {name:'Alcohol', data:d.alcohol, color:COLORS.gold},
     {name:'Drogas', data:d.drogas, color:COLORS.red},
   ]));
-  safeChart(()=> makeBar('chartReclamos', shortM, [{name:'Reclamos', data:d.reclamos, color:COLORS.blue}]));
   safeChart(()=> makeBar('chartOPL', shortM, [{name:'Incidencias OPL', data:d.incidencias_opl, color:COLORS.green}]));
   safeChart(()=> makeLine('chartTiempo', shortM, [{name:'Minutos', data:d.tiempo_respuesta, color:COLORS.blue}], 'num'));
   safeChart(()=> makeBar('chartCorrectivos', shortM, [{name:'Correctivos', data:d.ejecucion_correctivos, color:COLORS.gold}]));
@@ -583,6 +579,7 @@ function renderForIndex(idx){
   safeChart(()=> makeGauge('gaugePreventivos', nz(val('cumplimiento_preventivos')), COLORS.gold));
 
   document.getElementById('statTiempoResp').textContent = val('tiempo_respuesta')!==null ? fmtNum(val('tiempo_respuesta')) : '—';
+  document.getElementById('chipReclamosMes').textContent = fmtNum(nz(val('reclamos')));
 
   const corr = nz(val('ejecucion_correctivos')), ev = nz(val('ejecucion_eventos'));
   safeChart(()=> makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]));
