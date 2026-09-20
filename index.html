@@ -309,11 +309,6 @@
 
   </div>
 
-  <div class="budget-panel">
-    <div class="section-title st-navy" style="display:inline-block;">Presupuesto</div>
-    <div class="chart-box"><canvas id="chartPresupuesto"></canvas></div>
-  </div>
-
   <div class="footer-strip">
     <div class="chip"><div class="val" id="chipAusentismo">—</div><div class="lab">Ausentismo acumulado</div></div>
     <div class="chip"><div class="val" id="chipReclamos">—</div><div class="lab">Reclamos acumulados</div></div>
@@ -321,9 +316,12 @@
     <div class="chip"><div class="val" id="chipAlquileres">—</div><div class="lab">Incid. espacios alquilados YTD</div></div>
   </div>
 
-</main>
+  <div class="budget-panel">
+    <div class="section-title st-navy" style="display:inline-block;">Presupuesto</div>
+    <div class="chart-box"><canvas id="chartPresupuesto"></canvas></div>
+  </div>
 
-<footer>Los datos se sincronizan automáticamente desde el Google Sheet cada 60 segundos. Metas mostradas son referenciales y se pueden ajustar.</footer>
+</main>
 
 <script>
 /* ================= DEFAULT DATA (respaldo mientras carga la primera sincronización) ================= */
@@ -523,7 +521,6 @@ function render(){
 
 function renderForIndex(idx){
   const d = STATE.data;
-  const months = STATE.months;
   CURRENT_IDX = idx;
 
   const val = (key)=> d[key] && d[key][idx]!==undefined ? d[key][idx] : null;
@@ -595,8 +592,7 @@ function renderForIndex(idx){
   safeChart(()=> makeDonut('donutCorrectivos', [corr, ev], [COLORS.gold, COLORS.green]));
 
   const now = new Date();
-  document.getElementById('lastUpdate').textContent =
-    'Mes de referencia: '+(months[idx].charAt(0)+months[idx].slice(1).toLowerCase())+' · actualizado '+now.toLocaleTimeString('es-PE');
+  document.getElementById('lastUpdate').textContent = 'Actualizado ' + now.toLocaleTimeString('es-PE');
 }
 
 document.getElementById('monthSelect').addEventListener('change', (e)=>{
